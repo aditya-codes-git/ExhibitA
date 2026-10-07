@@ -31,6 +31,7 @@ model Order {
   createdAt        DateTime  @default(now()) @db.Timestamptz(3)
   updatedAt        DateTime  @updatedAt @db.Timestamptz(3)
   captures         Capture[]
+  evidenceCase     EvidenceCase?
 
   @@index([merchantId, createdAt])
   @@schema("exhibita")
@@ -48,5 +49,18 @@ model Capture {
   recordedAt      DateTime @default(now()) @db.Timestamptz(3)
 
   @@index([orderId, occurredAt])
+  @@schema("exhibita")
+}
+
+model EvidenceCase {
+  orderId           String    @id @db.Uuid
+  order             Order     @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  buyerInstruction  String    @db.Text
+  itemName          String    @db.VarChar(200)
+  shopName          String    @db.VarChar(200)
+  agentActionSource String?   @db.VarChar(40)
+  agentActionAt     DateTime? @db.Timestamptz(3)
+  recordedAt        DateTime  @default(now()) @db.Timestamptz(3)
+
   @@schema("exhibita")
 }
