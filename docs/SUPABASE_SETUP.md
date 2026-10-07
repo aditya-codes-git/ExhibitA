@@ -21,26 +21,16 @@ The first creation attempt hit the account's two-active-free-project limit. The 
 
 Do not use the Supabase publishable key or service-role API key as a database password. This foundation does not use the Supabase browser SDK, Auth, or Storage. Before production, provision a dedicated backend role with explicit privileges and design merchant authorization. An administrative connection is acceptable only for initial developer setup, and must stay server-side.
 
-## Initial migration and Prisma baseline
+## Migrations
 
-The exact SQL in `prisma/migrations/20261005000100_initial/migration.sql` has already been applied to this project's private `exhibita` schema using the Supabase connector. Supabase records that application in its own migration history. Prisma's `_prisma_migrations` table has **not** been initialized because local database credentials were unavailable.
-
-After configuring the connection, inspect the schema and confirm that it matches the migration, then adopt the existing migration **on this initialized project only**:
-
-```powershell
-npx prisma migrate resolve --applied 20261005000100_initial
-npx prisma migrate status
-npm run db:deploy
-```
-
-These commands have not yet been run. Do not run `db:deploy` before baselining this existing schema. On a truly empty replacement project, skip `migrate resolve` and run `db:deploy` to apply the actual SQL instead. Prisma is the source of truth for subsequent application migrations; keep SQL and migration history aligned.
+Prisma migration history is initialized on the dedicated ExhibitA project. Both `20261005000100_initial` and `20261007180918_evidence_case` are applied; `npx prisma migrate status` reports the database up to date. The second migration adds only the private `exhibita."EvidenceCase"` table and its relation to Order. For later migrations, run `npm run db:deploy` with the configured server-side connection. Do not run `prisma migrate resolve` again on this project.
 
 The migration targets Supabase and references its built-in `anon` and `authenticated` roles. It is not a portable migration for an unconfigured standalone PostgreSQL server.
 
 ## Access model and verification
 
-The private `exhibita` schema contains Merchant, Order, and Capture. All three tables have RLS enabled and no browser policies. `anon` and `authenticated` have no table SELECT privileges. Supabase's security advisor reported only three informational `rls_enabled_no_policy` notices, which are intentional for this backend-only foundation. See [the advisor explanation](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy).
+The private `exhibita` schema contains Merchant, Order, Capture, and EvidenceCase. All four tables have RLS enabled and no browser policies. `anon` and `authenticated` have no table SELECT privileges. The EvidenceCase source/time pair and order relation are constrained in PostgreSQL. See [Supabase's advisor explanation](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy).
 
-Connector SQL tests inserted related records, verified rejection of negative amounts and duplicate capture IDs, and rolled back. A final count showed all three tables empty. These checks do not verify the application's credentials, network path, Prisma role permissions, or application-level persistence.
+The local API readiness endpoint has verified database connectivity and PayPal Sandbox OAuth. A saved $25 jersey demo order and EvidenceCase were checked against the API and direct database reads. A PayPal capture is only confirmed when a matching completed Capture row exists; creating the order alone does not prove payment.
 
 Reference: [Supabase Prisma guide](https://supabase.com/docs/guides/database/prisma).

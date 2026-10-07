@@ -1,13 +1,13 @@
 # ExhibitA status
 
-Updated: 2026-10-05 (Asia/Calcutta).
+Updated: 2026-10-08 (Asia/Calcutta).
 
-The dedicated [ExhibitA Supabase project](https://supabase.com/dashboard/project/coponziasrruazpxsgyy) exists in the Hackathon organization, Mumbai. Its initial private-schema migration was applied and tested through the Supabase connector. The local app has **not** been connected to it: `DATABASE_URL` is unset, and Prisma migration history still needs the documented [baseline step](SUPABASE_SETUP.md). PayPal Sandbox credentials are configured locally, but OAuth and checkout have not been verified.
+The local app connects to the dedicated [ExhibitA Supabase project](https://supabase.com/dashboard/project/coponziasrruazpxsgyy) and PayPal Sandbox. Prisma reports both migrations applied. The private `exhibita` schema stores merchants, orders, captures, and fixed demo evidence cases.
 
-The app now includes local test-order creation, PayPal Sandbox order and capture calls, order/capture persistence, readiness checks, and a merchant dashboard inspired by the supplied PayPal screenshots. Capture parsing rejects non-USD, invalid or nonpositive amounts, and amounts that disagree with the local order. Creation uses fixed local return URLs; capture persistence and order completion share a database transaction. These paths have mock tests but **no real PayPal Sandbox checkout or live application-to-Supabase persistence test** because the database connection is unset.
+The $25 Real Madrid jersey demo creates a saved case with the preset buyer request and a clearly labeled `SIMULATED_DEMO` action. A Sandbox buyer completed checkout for local order `c988aca6-6f84-4bac-8384-0a5b48eeb284`. The return page and saved case show a completed $25 USD capture (`8UA75761SL320530B`), and a direct database read matched the API's order, case, and capture records. The saved page was checked at desktop and mobile widths.
 
-Verification this turn: 32 tests pass; lint and production build pass. The dashboard was browser-checked with the integrations unconfigured. The interface reports configuration and stored captures without claiming an AI-agent audit trail or verified dispute evidence. Agent activity ingestion, webhooks, AI summaries, disputes, deployment, merchant authentication, and production security remain outside this demo.
+This confirms the Sandbox payment and application persistence. It does not prove that a real agent visited a shop, bought a jersey, or followed a buyer's external instructions. Agent ingestion, webhooks, AI summaries, disputes, deployment, and merchant authentication remain future work.
 
-The API is bound to loopback for local development. Its order read/write endpoints are unauthenticated; do not expose it publicly or use real merchant data until authorization and error handling are hardened. The `paymentFlow` readiness field still reports `not_implemented` while the real end-to-end Sandbox flow is unverified.
+The API is bound to loopback for this local demo; its order endpoints are unauthenticated and should not be exposed publicly.
 
-The workspace remains uncommitted and unpushed. `merchant-growth-ai` was paused with user authorization to make room under the free-project limit; `sih26` was not modified.
+`merchant-growth-ai` was paused with user authorization to make room under the free-project limit; `sih26` was not modified.

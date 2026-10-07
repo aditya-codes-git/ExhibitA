@@ -62,3 +62,12 @@ export const orderItemSchema = z.object({
   evidenceCase: evidenceCaseSchema.nullable().optional(),
 });
 export type OrderItem = z.infer<typeof orderItemSchema>;
+
+export function isCaseCaptureComplete(
+  order: Pick<OrderItem, 'status' | 'captures'>,
+): boolean {
+  return (
+    order.status === 'COMPLETED' &&
+    order.captures.some((capture) => capture.status === 'COMPLETED')
+  );
+}

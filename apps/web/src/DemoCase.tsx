@@ -1,5 +1,17 @@
+import { useState } from 'react';
 import { Link } from 'react-router';
-import { ArrowLeft, CheckCircle2, FileSearch, Info, Shirt } from 'lucide-react';
+import {
+  ArrowLeft,
+  CheckCircle2,
+  ExternalLink,
+  FileSearch,
+  Info,
+  Shirt,
+} from 'lucide-react';
+import {
+  createOrderResponseSchema,
+  type CreateOrderResponse,
+} from '@exhibita/shared';
 
 const item = 'Real Madrid 2026 home jersey, player edition';
 const shop = 'Demo Sports Shop';
@@ -7,6 +19,30 @@ const price = '$25';
 const instruction = `Buy the ${item}, for ${price} from ${shop}.`;
 
 export function DemoCase() {
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState('');
+  const [created, setCreated] = useState<CreateOrderResponse | null>(null);
+
+  const startTest = async () => {
+    setCreating(true);
+    setError('');
+    setCreated(null);
+    try {
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ demoCase: 'football_jersey_2026' }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || 'Could not start test');
+      setCreated(createOrderResponseSchema.parse(body));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not start test');
+    } finally {
+      setCreating(false);
+    }
+  };
+
   return (
     <main className="dashboard-content">
       <Link
@@ -93,9 +129,58 @@ export function DemoCase() {
         </div>
       </section>
 
+      <section className="mt-5 rounded-2xl border border-blue-200 bg-blue-50 p-6">
+        <h2 className="text-lg font-bold text-slate-950">
+          Try this $25 request in PayPal Sandbox
+        </h2>
+        <p className="mt-2 text-sm text-slate-700">
+          ExhibitA will save the preset request and a clearly labeled simulated
+          action. You will approve a test payment as a Sandbox buyer; this does
+          not purchase a jersey from a real shop.
+        </p>
+        <button
+          type="button"
+          onClick={startTest}
+          disabled={creating}
+          className="mt-4 rounded-xl bg-blue-700 px-5 py-3 text-sm font-bold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {creating ? 'Creating Sandbox order…' : 'Start $25 Sandbox test'}
+        </button>
+        {error && (
+          <p role="alert" className="mt-3 text-sm font-medium text-rose-700">
+            {error}
+          </p>
+        )}
+        {created && (
+          <div className="mt-4 rounded-xl border border-blue-200 bg-white p-4 text-sm">
+            <p className="font-semibold text-slate-900">Test order saved</p>
+            <p className="mt-1 font-mono text-xs text-slate-500">
+              Local order ID: {created.orderId}
+            </p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <a
+                href={created.approvalUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-lg bg-blue-700 px-4 py-2 font-semibold text-white hover:bg-blue-800"
+              >
+                Approve in PayPal Sandbox <ExternalLink size={15} />
+              </a>
+              <Link
+                to={`/cases/${created.orderId}`}
+                className="inline-flex items-center rounded-lg border border-slate-300 px-4 py-2 font-semibold text-blue-800 hover:bg-slate-50"
+              >
+                View saved case
+              </Link>
+            </div>
+          </div>
+        )}
+      </section>
+
       <p className="mt-6 flex items-start gap-2 text-xs text-slate-500">
         <FileSearch size={15} className="shrink-0" />
-        This example is separate from the Sandbox transactions on the dashboard.
+        Viewing this example alone does not create an order. Sandbox test cases
+        appear with recent orders on the dashboard.
       </p>
     </main>
   );

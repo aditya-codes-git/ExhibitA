@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { readinessSchema, type Readiness } from '@exhibita/shared';
 import { DemoCase } from './DemoCase';
+import { SavedCase } from './SavedCase';
 import './style.css';
 
 type OrderWithCaptures = {
@@ -40,6 +41,7 @@ type OrderWithCaptures = {
   captureRequestId: string;
   createdAt: string;
   updatedAt: string;
+  evidenceCase?: { orderId: string } | null;
   captures: Array<{
     id: string;
     orderId: string;
@@ -660,6 +662,14 @@ function Dashboard() {
                         </div>
                       )}
                     </div>
+                    <Link
+                      to={`/cases/${order.id}`}
+                      className="mt-3 inline-flex text-xs font-bold text-blue-700 hover:underline"
+                    >
+                      {order.evidenceCase
+                        ? 'View saved case'
+                        : 'View order record'}
+                    </Link>
                   </div>
                 );
               })}
@@ -770,6 +780,14 @@ function ReturnPage() {
                 : errorMessage}
             </p>
             <div className="mt-6 flex justify-center gap-4">
+              {orderId && (
+                <Link
+                  to={`/cases/${orderId}`}
+                  className="rounded-xl border border-slate-300 px-5 py-2.5 text-sm font-semibold text-blue-700 hover:bg-slate-50"
+                >
+                  View saved record
+                </Link>
+              )}
               <Link
                 to="/"
                 className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 transition"
@@ -844,6 +862,14 @@ function ReturnPage() {
             </div>
 
             <div className="mt-6 flex justify-end gap-3">
+              {orderId && (
+                <Link
+                  to={`/cases/${orderId}`}
+                  className="rounded-xl border border-slate-300 px-5 py-2.5 text-sm font-semibold text-blue-700 hover:bg-slate-50"
+                >
+                  View saved record
+                </Link>
+              )}
               <button
                 onClick={() => navigate('/')}
                 className="flex items-center gap-2 rounded-xl bg-blue-700 px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-800 transition shadow-sm"
@@ -859,6 +885,8 @@ function ReturnPage() {
 }
 
 function CancelPage() {
+  const [params] = useSearchParams();
+  const orderId = params.get('orderId');
   return (
     <main className="mx-auto max-w-lg px-6 py-16 text-center">
       <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
@@ -870,12 +898,22 @@ function CancelPage() {
           You returned from the Sandbox checkout without capturing through
           ExhibitA. Check the order list for its current status.
         </p>
-        <Link
-          to="/"
-          className="mt-6 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-slate-800 transition"
-        >
-          Return to Dashboard
-        </Link>
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
+          {orderId && (
+            <Link
+              to={`/cases/${orderId}`}
+              className="inline-flex items-center rounded-xl border border-slate-300 px-4 py-2.5 text-xs font-bold text-blue-700 hover:bg-slate-50"
+            >
+              View saved record
+            </Link>
+          )}
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-slate-800 transition"
+          >
+            Return to Dashboard
+          </Link>
+        </div>
       </div>
     </main>
   );
@@ -888,7 +926,7 @@ function WorkspaceStrip() {
     <div className="sandbox-strip">
       <ShieldCheck size={16} aria-hidden="true" />
       {isDemoCase
-        ? 'This is a simulated example. No PayPal payment or order was created.'
+        ? 'This example is simulated. Starting the test below creates a separate Sandbox order.'
         : 'You’re viewing test transactions in PayPal Sandbox.'}
     </div>
   );
@@ -952,6 +990,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/demo-case" element={<DemoCase />} />
+          <Route path="/cases/:orderId" element={<SavedCase />} />
           <Route path="/return" element={<ReturnPage />} />
           <Route path="/cancel" element={<CancelPage />} />
           <Route
