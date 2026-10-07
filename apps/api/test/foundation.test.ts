@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import request from 'supertest';
 import { parseConfig } from '../src/config.js';
 import { createApp } from '../src/app.js';
+import type { PayPalClient } from '../src/paypal.js';
 
 describe('configuration', () => {
   it('redacts malformed credential-bearing database URLs', () => {
@@ -77,5 +78,73 @@ describe('health', () => {
       paymentFlow: 'not_implemented',
     });
     expect(response.text).not.toContain('secret');
+  });
+
+  const config = {
+    port: 3001,
+    databaseUrl: 'postgresql://private-test-value',
+    paypalClientId: 'id',
+    paypalClientSecret: 'secret',
+  };
+
+  it('reports the payment flow ready only after database and OAuth succeed', async () => {
+    const paypalClient = {
+      verifyCredentials: vi.fn().mockResolvedValue(undefined),
+    } as unknown as PayPalClient;
+    const app = createApp({
+      config,
+      checkDatabase: async () => {},
+      paypalClient,
+    });
+    const response = await request(app).get('/api/readiness');
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      database: 'connected',
+      paypal: 'verified',
+      paymentFlow: 'ready',
+    });
+    expect(paypalClient.verifyCredentials).toHaveBeenCalledOnce();
+  });
+
+  it('does not expose OAuth errors or report ready when PayPal fails', async () => {
+    const paypalClient = {
+      verifyCredentials: vi
+        .fn()
+        .mockRejectedValue(new Error('private-test-value')),
+    } as unknown as PayPalClient;
+    const app = createApp({
+      config,
+      checkDatabase: async () => {},
+      paypalClient,
+    });
+    const response = await request(app).get('/api/readiness');
+    expect(response.body).toEqual({
+      database: 'connected',
+      paypal: 'configured_unverified',
+      paymentFlow: 'not_implemented',
+    });
+    expect(response.text).not.toContain('private-test-value');
+    expect(response.text).not.toContain('secret');
+  });
+
+  it('does not report the payment flow ready when database is unavailable', async () => {
+    const paypalClient = {
+      verifyCredentials: vi.fn().mockResolvedValue(undefined),
+    } as unknown as PayPalClient;
+    const app = createApp({
+      config,
+      checkDatabase: async () => {
+        throw new Error('private-test-value');
+      },
+      paypalClient,
+    });
+    const response = await request(app).get('/api/readiness');
+    expect(response.status).toBe(503);
+    expect(response.body).toEqual({
+      database: 'unavailable',
+      paypal: 'verified',
+      paymentFlow: 'not_implemented',
+    });
+    expect(response.text).not.toContain('private-test-value');
   });
 });

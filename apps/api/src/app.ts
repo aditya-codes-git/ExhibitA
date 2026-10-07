@@ -50,13 +50,25 @@ export function createApp({
         /* Readiness never discloses database credentials or driver errors. */
       }
     }
+    let paypalStatus: Readiness['paypal'] = 'not_configured';
+    if (config.paypalClientId && config.paypalClientSecret) {
+      paypalStatus = 'configured_unverified';
+      try {
+        if (paypalClient) {
+          await paypalClient.verifyCredentials();
+          paypalStatus = 'verified';
+        }
+      } catch {
+        /* Readiness never discloses PayPal credentials or OAuth errors. */
+      }
+    }
     const result: Readiness = {
       database: databaseStatus,
-      paypal:
-        config.paypalClientId && config.paypalClientSecret
-          ? 'configured_unverified'
-          : 'not_configured',
-      paymentFlow: 'not_implemented',
+      paypal: paypalStatus,
+      paymentFlow:
+        databaseStatus === 'connected' && paypalStatus === 'verified'
+          ? 'ready'
+          : 'not_implemented',
     };
     res
       .status(databaseStatus === 'connected' ? 200 : 503)

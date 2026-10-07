@@ -208,9 +208,7 @@ function Dashboard() {
     }
   };
 
-  const isConfigured =
-    readiness?.database === 'connected' &&
-    readiness?.paypal !== 'not_configured';
+  const isConfigured = readiness?.paymentFlow === 'ready';
 
   const completedOrders = orders.filter(
     (order) => order.status === 'COMPLETED',
@@ -390,7 +388,7 @@ function Dashboard() {
                 }`}
               />
               <span className="text-sm font-semibold text-slate-900">
-                {isConfigured ? 'Ready to test' : 'Pending configuration'}
+                {isConfigured ? 'Ready to test' : 'Not ready'}
               </span>
             </div>
           </div>
@@ -398,15 +396,12 @@ function Dashboard() {
 
         {!isConfigured && (
           <div className="mt-4 rounded-xl bg-blue-50 border border-blue-200 p-4 text-xs text-blue-900 leading-relaxed">
-            <p className="font-semibold mb-1">
-              Configuration required in local{' '}
-              <code className="bg-blue-100 px-1 py-0.5 rounded">.env</code>:
-            </p>
+            <p className="font-semibold mb-1">Integration checks:</p>
             <p>
               {readiness?.database !== 'connected' && (
                 <>
-                  Set <code className="font-mono">DATABASE_URL</code> to the
-                  Supabase session pooler URI.{' '}
+                  Check the Supabase connection in local{' '}
+                  <code className="font-mono">.env</code>.{' '}
                 </>
               )}
               {readiness?.paypal === 'not_configured' && (
@@ -417,7 +412,7 @@ function Dashboard() {
                 </>
               )}
               {readiness?.paypal === 'configured_unverified' &&
-                'PayPal credentials are configured but have not been verified.'}
+                'PayPal Sandbox OAuth has not passed verification.'}
             </p>
           </div>
         )}
