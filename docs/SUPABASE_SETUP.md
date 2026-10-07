@@ -23,7 +23,7 @@ Do not use the Supabase publishable key or service-role API key as a database pa
 
 ## Migrations
 
-Prisma migration history is initialized on the dedicated ExhibitA project. Both `20261005000100_initial` and `20261007180918_evidence_case` are applied; `npx prisma migrate status` reports the database up to date. The second migration adds only the private `exhibita."EvidenceCase"` table and its relation to Order. For later migrations, run `npm run db:deploy` with the configured server-side connection. Do not run `prisma migrate resolve` again on this project.
+Prisma migration history is initialized on the dedicated ExhibitA project. The initial migration, `20261007180918_evidence_case`, and `20261008001005_fix_evidence_case_action_pair` are applied. The second adds only the private `exhibita."EvidenceCase"` table and its relation to Order; the third closes a null-handling gap in its source/time constraint. For later migrations, run `npm run db:deploy` with the configured server-side connection. Do not run `prisma migrate resolve` again on this project.
 
 The migration targets Supabase and references its built-in `anon` and `authenticated` roles. It is not a portable migration for an unconfigured standalone PostgreSQL server.
 
