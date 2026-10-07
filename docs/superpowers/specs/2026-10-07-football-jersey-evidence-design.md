@@ -1,27 +1,15 @@
-# Football jersey evidence case
+# Football jersey demo case
 
-## Purpose and boundary
+## Purpose
 
-Add ExhibitA's first inspectable agent-evidence case. The buyer's instruction is “Buy me a football jersey.” In the fictional scenario, an agent selects a Real Madrid 2026 home jersey, player edition, priced at $25 from a fictional demo shop. The case demonstrates how a merchant can inspect the instruction, the agent's choice, and unanswered questions.
+Show the simplest possible example of a buyer instruction and the agent action that followed it. The buyer gives a specific request: “Buy the Real Madrid 2026 home jersey, player edition, for $25 from Demo Sports Shop.” Demo Sports Shop is fictional. In the example, the agent follows that request exactly; it does not choose the team, jersey, edition, or price independently.
 
-This is a **simulated case**, not a PayPal transaction. It must not be attached to the existing $0.01 Sandbox capture or presented as proof that a jersey was bought or delivered. No new PayPal order or capture is part of this increment.
+## Scope and presentation
 
-## Data and provenance
+Add one read-only demo page to the existing frontend. It shows two steps: the buyer's exact instruction and a simulated agent checkout for the same item and price. Label the whole page and the agent step **Simulated example**. Show a simple side-by-side match between requested item/price and simulated action. There are no missing-constraint flags, dispute conclusions, or AI-generated claims in this example.
 
-Keep the case in Supabase's private `exhibita` schema, separate from `Order` and `Capture`. A minimal `EvidenceCase` stores a stable ID, the default demo merchant ID, title, `SIMULATED` classification, instruction text, selected item text, selected price in integer USD cents, fictional seller label, and creation time. `EvidenceEvent` stores its case ID, event type, short description, source label, occurrence time, and ingestion time. Event types for this case are buyer instruction, agent selection, and simulated checkout. Every displayed event must visibly say that its source is a demo scenario; timestamps are generated when the case is seeded and are not claimed as historical buyer or agent telemetry.
+Keep the case as a local frontend fixture. This example does not need new Supabase tables, API endpoints, seed commands, or a real $25 PayPal Sandbox payment. It is not linked to the existing $0.01 completed capture. The existing payment dashboard and records remain unchanged. A link from the dashboard may open the demo page, but the demo must never appear among verified orders or captures.
 
-An idempotent server-side seed command creates this one case and its events with stable IDs. Re-running it does not duplicate evidence. The seed never modifies PayPal orders or captures. The API offers read-only case and event endpoints for the local dashboard. No browser write endpoint is needed for this first slice.
+## Verification and limits
 
-## Review logic and interface
-
-The case page shows the instruction and selection side by side, then a timestamped event list with source labels. It shows four **review questions**: the buyer did not specify a team, edition, size, or spending limit. These are missing constraints in the example, not findings of agent misconduct or payment fraud. The $25 price is a scenario value, not a verified charge.
-
-Use straightforward, deterministic text for this one case. Do not call it an AI summary or infer buyer intent from the sparse prompt. The existing dashboard links to the case and labels it “Simulated evidence case.” Keep the current PayPal order list separate, with its verified capture data unchanged.
-
-## Failure handling and safety
-
-If the database is unavailable or the case has not been seeded, show a clear unavailable/empty state; do not substitute fabricated live data. Validate API output and seed input. Keep `exhibita` private with RLS enabled and no browser grants. The API remains loopback-only and unauthenticated for local demonstration; the case must not be exposed publicly until merchant authorization is implemented. Do not put secrets, real buyer identities, or a real store URL in the fixture.
-
-## Verification
-
-Run the seed twice and verify one case and exactly three events. Read the case through the API and page, confirming the simulated labels, $25 amount, four review questions, and absence of a PayPal capture link. Re-run tests, lint, type checking, and the production build. Confirm the existing $0.01 PayPal order and capture are unchanged. This verifies the demo evidence slice, not independent agent telemetry, AI analysis, or dispute submission.
+Check that the page renders the exact request, the matching simulated action, the $25 amount, and visible simulation labels. Confirm that it shows no PayPal order or capture ID. Run the frontend TypeScript and production build checks. This demonstrates the intended evidence presentation only; it does not establish actual agent telemetry, a completed jersey purchase, persistent evidence, AI analysis, or dispute readiness.
