@@ -63,7 +63,7 @@ button {
   font-size: 14px;
   font-weight: 600;
 }
-.sidebar-links a:first-child,
+.sidebar-links a.active,
 .sidebar-links a:hover {
   background: #d8e8ff;
   color: #003087;

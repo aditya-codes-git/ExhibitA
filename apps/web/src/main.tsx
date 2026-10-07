@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import {
   BrowserRouter,
   Link,
+  NavLink,
   Route,
   Routes,
   useMatch,
@@ -908,14 +909,14 @@ function App() {
         </Link>
         <span className="sidebar-workspace">DEVELOPER WORKSPACE</span>
         <nav className="sidebar-links" aria-label="Workspace">
-          <Link to="/">
+          <NavLink to="/" end>
             <Home size={19} />
             Overview
-          </Link>
-          <Link to="/demo-case">
+          </NavLink>
+          <NavLink to="/demo-case">
             <FileSearch size={19} />
             Simulated case
-          </Link>
+          </NavLink>
           <a href="/#purchase">
             <CreditCard size={19} />
             Test purchase
