@@ -1,0 +1,250 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: Arial, Helvetica, sans-serif;
+}
+body {
+  margin: 0;
+  background: #fff;
+  color: #001435;
+}
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+button {
+  cursor: pointer;
+}
+:focus-visible {
+  outline: 3px solid #0070e0;
+  outline-offset: 4px;
+}
+
+.app-sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 20;
+  display: flex;
+  width: 264px;
+  flex-direction: column;
+  background: #f3f6fa;
+  border-right: 1px solid #e5eaf1;
+  padding: 28px 14px;
+}
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  color: #003087;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -1.4px;
+}
+.sidebar-workspace {
+  padding: 48px 18px 18px;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+}
+.sidebar-links {
+  display: grid;
+  gap: 5px;
+}
+.sidebar-links a {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 48px;
+  padding: 0 16px;
+  border-radius: 11px;
+  color: #172b4d;
+  font-size: 14px;
+  font-weight: 600;
+}
+.sidebar-links a:first-child,
+.sidebar-links a:hover {
+  background: #d8e8ff;
+  color: #003087;
+}
+.sidebar-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  margin-top: auto;
+  padding: 16px;
+  border-top: 1px solid #dce3ed;
+  color: #003087;
+  font-size: 13px;
+  font-weight: 700;
+}
+.sidebar-note small {
+  color: #5d6b82;
+  font-size: 11px;
+  font-weight: 400;
+}
+.app-main {
+  min-height: 100vh;
+  margin-left: 264px;
+}
+.app-topbar {
+  display: flex;
+  min-height: 76px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 12px clamp(24px, 4vw, 64px);
+  border-bottom: 1px solid #e8ecf2;
+  background: #fff;
+}
+.topbar-title {
+  color: #081b3f;
+  font-size: 21px;
+  font-weight: 700;
+}
+.topbar-title small {
+  display: block;
+  margin-top: 4px;
+  color: #66758c;
+  font-size: 11px;
+  font-weight: 400;
+}
+.topbar-mode {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #003087;
+  font-size: 12px;
+  font-weight: 700;
+}
+.topbar-mode span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #00a66a;
+}
+.mobile-brand {
+  display: none;
+}
+.sandbox-strip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 39px;
+  background: #ede6ff;
+  color: #35206c;
+  font-size: 12px;
+  font-weight: 600;
+}
+.dashboard-content {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 48px clamp(24px, 4vw, 64px) 80px;
+}
+.quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 36px;
+}
+.quick-actions a {
+  display: flex;
+  min-width: 110px;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: #001435;
+  font-size: 13px;
+  font-weight: 600;
+}
+.quick-actions a span {
+  display: grid;
+  width: 58px;
+  height: 58px;
+  place-items: center;
+  border-radius: 50%;
+  background: #f1f4f8;
+  color: #003087;
+  transition:
+    background 150ms ease,
+    transform 150ms ease;
+}
+.quick-actions a:hover span {
+  background: #d8e8ff;
+  transform: translateY(-2px);
+}
+.overview-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.overview-cards > div {
+  min-height: 138px;
+  border: 1px solid #d8dce4;
+  border-radius: 15px;
+  padding: 20px;
+}
+.overview-cards p {
+  margin: 0 0 16px;
+  color: #536178;
+  font-size: 13px;
+  font-weight: 600;
+}
+.overview-cards strong {
+  display: block;
+  color: #001435;
+  font-size: clamp(24px, 2.5vw, 34px);
+  line-height: 1.1;
+}
+.overview-cards small {
+  display: block;
+  margin-top: 8px;
+  color: #6b7789;
+  font-size: 11px;
+}
+#purchase,
+#orders,
+#integrations {
+  scroll-margin-top: 24px;
+}
+
+@media (max-width: 900px) {
+  .app-sidebar {
+    display: none;
+  }
+  .app-main {
+    margin-left: 0;
+  }
+  .mobile-brand {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: #003087;
+    font-size: 19px;
+    font-weight: 800;
+  }
+  .topbar-title {
+    display: none;
+  }
+  .dashboard-content {
+    padding-top: 32px;
+  }
+}
+@media (max-width: 520px) {
+  .overview-cards {
+    grid-template-columns: 1fr;
+  }
+  .quick-actions {
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .quick-actions a {
+    min-width: 88px;
+    font-size: 11px;
+  }
+  .sandbox-strip {
+    padding: 7px 18px;
+    text-align: center;
+  }
+}
