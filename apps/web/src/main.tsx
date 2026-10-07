@@ -5,6 +5,7 @@ import {
   Link,
   Route,
   Routes,
+  useMatch,
   useNavigate,
   useSearchParams,
 } from 'react-router';
@@ -23,6 +24,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { readinessSchema, type Readiness } from '@exhibita/shared';
+import { DemoCase } from './DemoCase';
 import './style.css';
 
 type OrderWithCaptures = {
@@ -883,6 +885,19 @@ function CancelPage() {
   );
 }
 
+function WorkspaceStrip() {
+  const isDemoCase = useMatch('/demo-case');
+
+  return (
+    <div className="sandbox-strip">
+      <ShieldCheck size={16} aria-hidden="true" />
+      {isDemoCase
+        ? 'This is a simulated example. No PayPal payment or order was created.'
+        : 'You’re viewing test transactions in PayPal Sandbox.'}
+    </div>
+  );
+}
+
 function App() {
   return (
     <BrowserRouter>
@@ -896,6 +911,10 @@ function App() {
           <Link to="/">
             <Home size={19} />
             Overview
+          </Link>
+          <Link to="/demo-case">
+            <FileSearch size={19} />
+            Simulated case
           </Link>
           <a href="/#purchase">
             <CreditCard size={19} />
@@ -933,12 +952,10 @@ function App() {
             Sandbox mode
           </span>
         </header>
-        <div className="sandbox-strip">
-          <ShieldCheck size={16} aria-hidden="true" /> You’re viewing test
-          transactions in PayPal Sandbox.
-        </div>
+        <WorkspaceStrip />
         <Routes>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/demo-case" element={<DemoCase />} />
           <Route path="/return" element={<ReturnPage />} />
           <Route path="/cancel" element={<CancelPage />} />
           <Route
