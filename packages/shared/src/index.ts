@@ -8,7 +8,8 @@ export const readinessSchema = z.object({
 export type Readiness = z.infer<typeof readinessSchema>;
 
 export const createOrderRequestSchema = z.object({
-  amountMinor: z.number().int().min(1).max(1_000_000).default(1500),
+  demoCase: z.literal('football_jersey_2026').optional(),
+  amountMinor: z.number().int().min(1).max(1_000_000).optional(),
   itemName: z.string().max(200).optional(),
 });
 export type CreateOrderRequest = z.infer<typeof createOrderRequestSchema>;
@@ -34,6 +35,17 @@ export const captureItemSchema = z.object({
 });
 export type CaptureItem = z.infer<typeof captureItemSchema>;
 
+export const evidenceCaseSchema = z.object({
+  orderId: z.string().uuid(),
+  buyerInstruction: z.string(),
+  itemName: z.string(),
+  shopName: z.string(),
+  agentActionSource: z.literal('SIMULATED_DEMO').nullable(),
+  agentActionAt: z.string().nullable(),
+  recordedAt: z.string(),
+});
+export type EvidenceCaseItem = z.infer<typeof evidenceCaseSchema>;
+
 export const orderItemSchema = z.object({
   id: z.string().uuid(),
   merchantId: z.string().uuid(),
@@ -47,5 +59,6 @@ export const orderItemSchema = z.object({
   createdAt: z.string(),
   updatedAt: z.string(),
   captures: z.array(captureItemSchema).default([]),
+  evidenceCase: evidenceCaseSchema.nullable().optional(),
 });
 export type OrderItem = z.infer<typeof orderItemSchema>;

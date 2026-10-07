@@ -7,6 +7,14 @@ import type { Config } from './config.js';
 import type { PrismaClient } from './generated/prisma/client.js';
 import { PayPalClient, extractCaptureDetails } from './paypal.js';
 
+const jerseyDemo = {
+  itemName: 'Real Madrid 2026 home jersey, player edition',
+  shopName: 'Demo Sports Shop',
+  buyerInstruction:
+    'Buy the Real Madrid 2026 home jersey, player edition, for $25 from Demo Sports Shop.',
+  amountMinor: 2500,
+} as const;
+
 export function createApp({
   config,
   checkDatabase,
@@ -65,6 +73,7 @@ export function createApp({
         include: {
           merchant: true,
           captures: true,
+          evidenceCase: true,
         },
         orderBy: { createdAt: 'desc' },
         take: 20,
@@ -88,6 +97,7 @@ export function createApp({
         include: {
           merchant: true,
           captures: true,
+          evidenceCase: true,
         },
       });
       if (!order) {
@@ -112,7 +122,18 @@ export function createApp({
     if (!parsed.success) {
       return res.status(400).json({ error: 'Invalid order input' });
     }
-    const { amountMinor, itemName } = parsed.data;
+    const isJerseyDemo = parsed.data.demoCase === 'football_jersey_2026';
+    if (
+      isJerseyDemo &&
+      (parsed.data.amountMinor !== undefined ||
+        parsed.data.itemName !== undefined)
+    ) {
+      return res.status(400).json({ error: 'Invalid demo order input' });
+    }
+    const amountMinor = isJerseyDemo
+      ? jerseyDemo.amountMinor
+      : (parsed.data.amountMinor ?? 1500);
+    const itemName = isJerseyDemo ? jerseyDemo.itemName : parsed.data.itemName;
 
     try {
       let merchant = await database.merchant.findFirst();
@@ -127,16 +148,30 @@ export function createApp({
       const createRequestId = randomUUID();
       const captureRequestId = randomUUID();
 
-      const order = await database.order.create({
-        data: {
-          merchantId: merchant.id,
-          amountMinor,
-          currency: 'USD',
-          status: 'LOCAL_CREATED',
-          createRequestId,
-          captureRequestId,
-        },
-      });
+      const orderData = {
+        merchantId: merchant.id,
+        amountMinor,
+        currency: 'USD',
+        status: 'LOCAL_CREATED',
+        createRequestId,
+        captureRequestId,
+      };
+      const order = isJerseyDemo
+        ? await database.$transaction(async (tx) => {
+            const created = await tx.order.create({ data: orderData });
+            await tx.evidenceCase.create({
+              data: {
+                orderId: created.id,
+                buyerInstruction: jerseyDemo.buyerInstruction,
+                itemName: jerseyDemo.itemName,
+                shopName: jerseyDemo.shopName,
+                agentActionSource: null,
+                agentActionAt: null,
+              },
+            });
+            return created;
+          })
+        : await database.order.create({ data: orderData });
 
       const origin = 'http://127.0.0.1:5173';
       const returnUrl = `${origin}/return?orderId=${order.id}`;
@@ -150,13 +185,29 @@ export function createApp({
         cancelUrl,
       });
 
-      const updatedOrder = await database.order.update({
-        where: { id: order.id },
-        data: {
-          paypalOrderId: paypalResult.id,
-          status: 'PAYPAL_ORDER_CREATED',
-        },
-      });
+      const updatedOrderData = {
+        paypalOrderId: paypalResult.id,
+        status: 'PAYPAL_ORDER_CREATED',
+      };
+      const updatedOrder = isJerseyDemo
+        ? await database.$transaction(async (tx) => {
+            const updated = await tx.order.update({
+              where: { id: order.id },
+              data: updatedOrderData,
+            });
+            await tx.evidenceCase.update({
+              where: { orderId: order.id },
+              data: {
+                agentActionSource: 'SIMULATED_DEMO',
+                agentActionAt: new Date(),
+              },
+            });
+            return updated;
+          })
+        : await database.order.update({
+            where: { id: order.id },
+            data: updatedOrderData,
+          });
 
       return res.status(201).json({
         orderId: updatedOrder.id,

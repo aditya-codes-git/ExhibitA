@@ -447,3 +447,131 @@ describe('order flow endpoints (mocked db and paypal)', () => {
     expect(response.body.capture.status).toBe('COMPLETED');
   });
 });
+
+describe('fixed jersey evidence case', () => {
+  const orderId = '3fa85f64-5717-4562-b3fc-2c963f66afa6';
+
+  function setup(paypalFails = false, legacy = false) {
+    const order: Record<string, unknown> = { id: orderId };
+    const evidenceCase: Record<string, unknown> = { orderId };
+    const tx = {
+      order: {
+        create: vi.fn(async ({ data }) => Object.assign(order, data)),
+        update: vi.fn(async ({ data }) => Object.assign(order, data)),
+      },
+      evidenceCase: {
+        create: vi.fn(async ({ data }) => Object.assign(evidenceCase, data)),
+        update: vi.fn(async ({ data }) => Object.assign(evidenceCase, data)),
+      },
+    };
+    const database = {
+      merchant: { findFirst: vi.fn().mockResolvedValue({ id: 'merchant-id' }) },
+      $transaction: vi.fn(async (callback) => callback(tx)),
+      order: {
+        findUnique: vi.fn(async ({ include }) => ({
+          ...order,
+          captures: [],
+          ...(include.evidenceCase
+            ? { evidenceCase: legacy ? null : evidenceCase }
+            : {}),
+        })),
+        findMany: vi.fn(async ({ include }) => [
+          {
+            ...order,
+            captures: [],
+            ...(include.evidenceCase
+              ? { evidenceCase: legacy ? null : evidenceCase }
+              : {}),
+          },
+        ]),
+      },
+    } as unknown as PrismaClient;
+    const paypalClient = {
+      createOrder: paypalFails
+        ? vi.fn().mockRejectedValue(new Error('Sandbox unavailable'))
+        : vi.fn().mockResolvedValue({
+            id: 'PP_ORDER_999',
+            approvalUrl:
+              'https://www.sandbox.paypal.com/checkoutnow?token=PP_ORDER_999',
+          }),
+    } as unknown as PayPalClient;
+    const app = createApp({ config: { port: 3001 }, database, paypalClient });
+    return { app, database, paypalClient, tx, order, evidenceCase };
+  }
+
+  it('stores the fixed request and simulated action around PayPal order creation', async () => {
+    const { app, database, paypalClient, tx, order, evidenceCase } = setup();
+    const response = await request(app).post('/api/orders').send({
+      demoCase: 'football_jersey_2026',
+      agentActionSource: 'EXTERNAL_AGENT',
+      agentActionAt: '2000-01-01T00:00:00Z',
+      status: 'COMPLETED',
+      paypalOrderId: 'FAKE',
+    });
+
+    expect(response.status).toBe(201);
+    expect(response.body.amountMinor).toBe(2500);
+    expect(response.body.currency).toBe('USD');
+    expect(response.body.paypalOrderId).toBe('PP_ORDER_999');
+    expect(order.amountMinor).toBe(2500);
+    expect(order.status).toBe('PAYPAL_ORDER_CREATED');
+    expect(evidenceCase).toMatchObject({
+      buyerInstruction:
+        'Buy the Real Madrid 2026 home jersey, player edition, for $25 from Demo Sports Shop.',
+      itemName: 'Real Madrid 2026 home jersey, player edition',
+      shopName: 'Demo Sports Shop',
+      agentActionSource: 'SIMULATED_DEMO',
+    });
+    expect(evidenceCase.agentActionAt).toBeInstanceOf(Date);
+    expect(database.$transaction).toHaveBeenCalledTimes(2);
+    expect(tx.evidenceCase.create).toHaveBeenCalledBefore(
+      paypalClient.createOrder as ReturnType<typeof vi.fn>,
+    );
+    expect(paypalClient.createOrder).toHaveBeenCalledBefore(
+      tx.evidenceCase.update,
+    );
+    expect(paypalClient.createOrder).toHaveBeenCalledWith(
+      expect.objectContaining({ amountMinor: 2500, reference: orderId }),
+    );
+
+    const saved = await request(app).get(`/api/orders/${orderId}`);
+    expect(saved.body.evidenceCase.agentActionSource).toBe('SIMULATED_DEMO');
+  });
+
+  it.each([
+    { demoCase: 'other_case' },
+    { demoCase: 'football_jersey_2026', amountMinor: 1 },
+    { demoCase: 'football_jersey_2026', itemName: 'Other item' },
+  ])('rejects invalid demo input before database writes: %j', async (body) => {
+    const { app, database } = setup();
+    const response = await request(app).post('/api/orders').send(body);
+    expect(response.status).toBe(400);
+    expect(database.merchant.findFirst).not.toHaveBeenCalled();
+    expect(database.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('keeps action evidence absent when PayPal order creation fails', async () => {
+    const { app, database, order, evidenceCase } = setup(true);
+    const response = await request(app)
+      .post('/api/orders')
+      .send({ demoCase: 'football_jersey_2026' });
+    expect(response.status).toBe(500);
+    expect(database.$transaction).toHaveBeenCalledTimes(1);
+    expect(order.status).toBe('LOCAL_CREATED');
+    expect(evidenceCase.agentActionSource).toBeNull();
+    expect(evidenceCase.agentActionAt).toBeNull();
+  });
+
+  it('returns legacy orders with a null case in both read endpoints', async () => {
+    const { app, database } = setup(false, true);
+    const one = await request(app).get(`/api/orders/${orderId}`);
+    const many = await request(app).get('/api/orders');
+    expect(one.body.evidenceCase).toBeNull();
+    expect(many.body[0].evidenceCase).toBeNull();
+    expect(database.order.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: expect.objectContaining({ evidenceCase: true }),
+      }),
+    );
+  });
+});
