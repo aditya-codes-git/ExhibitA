@@ -2,7 +2,7 @@
 
 ExhibitA helps merchants turn scattered AI-purchase activity into organized, evidence-backed transaction records using PayPal and AI.
 
-The first increment is a working development foundation. The merchant dashboard, end-to-end payment flow, agent timeline, AI analysis, and dispute operations are **not implemented yet**. See [STATUS](docs/STATUS.md) for verified results.
+The local demo has a merchant dashboard, a saved jersey evidence case, and a verified PayPal Sandbox capture stored in Supabase. The agent action is explicitly simulated; real agent evidence, AI analysis, and dispute operations are future work. See [STATUS](docs/STATUS.md) for verified results and [product direction](docs/PRODUCT_DIRECTION.md) for the next milestone.
 
 ## Stack
 
@@ -32,13 +32,13 @@ npm run build
 npm audit
 ```
 
-Tests cover environment handling, health/readiness behavior, and a PayPal adapter with mocked HTTP. They do not establish a working Sandbox payment flow. `npm run paypal:probe` checks real Sandbox OAuth when credentials are configured; it does not create an order or charge anything.
+Automated tests cover the API and payment behavior with mocks. A separate live Sandbox buyer checkout and direct Supabase read verified one completed $25 demo case; see [STATUS](docs/STATUS.md). `npm run paypal:probe` checks real Sandbox OAuth when credentials are configured; it does not create an order or charge anything.
 
 ## Database
 
-The dedicated [ExhibitA Supabase project](https://supabase.com/dashboard/project/coponziasrruazpxsgyy) is in Mumbai. The initial schema was applied through the connector and checked with rollback-only test records. Application-to-database connectivity still needs a local connection string.
+The dedicated [ExhibitA Supabase project](https://supabase.com/dashboard/project/coponziasrruazpxsgyy) is in Mumbai. The local application connects through a server-side database URL; Prisma migration history is current.
 
-**Before the first Prisma deployment to this already-initialized project, follow the baseline instructions in [Supabase setup](docs/SUPABASE_SETUP.md).** Do not run a reset or create a second initial migration.
+For future schema changes, follow [Supabase setup](docs/SUPABASE_SETUP.md). Do not reset the project or replay the initial migration.
 
 ## Project notes
 
@@ -48,5 +48,6 @@ The dedicated [ExhibitA Supabase project](https://supabase.com/dashboard/project
 - [Verification status](docs/STATUS.md)
 - [Feasibility and limitations](docs/FEASIBILITY_REPORT.md)
 - [Security boundaries](docs/SECURITY.md)
+- [Product direction and next milestone](docs/PRODUCT_DIRECTION.md)
 
 Licensed under [MIT](LICENSE).
