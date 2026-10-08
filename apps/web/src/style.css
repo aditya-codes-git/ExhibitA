@@ -1,12 +1,21 @@
 @import 'tailwindcss';
 
 @theme {
-  --font-sans: Arial, Helvetica, sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+:root {
+  --canvas: #f7f9fa;
+  --surface: #fff;
+  --ink: #102a33;
+  --muted: #61717b;
+  --border: #dde5e8;
+  --accent: #0b5863;
+  --accent-soft: #e6f3f3;
 }
 body {
   margin: 0;
-  background: #fff;
-  color: #001435;
+  background: var(--canvas);
+  color: var(--ink);
 }
 button,
 a {
@@ -16,8 +25,8 @@ button {
   cursor: pointer;
 }
 :focus-visible {
-  outline: 3px solid #0070e0;
-  outline-offset: 4px;
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
 }
 
 .app-sidebar {
@@ -25,123 +34,135 @@ button {
   inset: 0 auto 0 0;
   z-index: 20;
   display: flex;
-  width: 264px;
+  width: 232px;
   flex-direction: column;
-  background: #f3f6fa;
-  border-right: 1px solid #e5eaf1;
-  padding: 28px 14px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 24px 12px;
 }
 .sidebar-brand {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 16px;
-  color: #003087;
-  font-size: 26px;
-  font-weight: 800;
-  letter-spacing: -1.4px;
+  gap: 9px;
+  padding: 2px 12px;
+  color: var(--ink);
+  font-size: 22px;
+  font-weight: 750;
+  letter-spacing: -0.8px;
+}
+.sidebar-brand svg,
+.mobile-brand svg {
+  color: var(--accent);
 }
 .sidebar-workspace {
-  padding: 48px 18px 18px;
-  color: #64748b;
-  font-size: 10px;
+  padding: 46px 14px 14px;
+  color: var(--muted);
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 1.4px;
+  letter-spacing: 1px;
 }
 .sidebar-links {
   display: grid;
-  gap: 5px;
+  gap: 3px;
 }
 .sidebar-links a {
   display: flex;
   align-items: center;
-  gap: 14px;
-  min-height: 48px;
-  padding: 0 16px;
-  border-radius: 11px;
-  color: #172b4d;
-  font-size: 14px;
+  gap: 12px;
+  min-height: 42px;
+  padding: 0 13px;
+  border-radius: 9px;
+  color: var(--muted);
+  font-size: 13px;
   font-weight: 600;
 }
 .sidebar-links a.active,
 .sidebar-links a:hover {
-  background: #d8e8ff;
-  color: #003087;
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 .sidebar-note {
   display: flex;
   align-items: flex-start;
   gap: 11px;
   margin-top: auto;
-  padding: 16px;
-  border-top: 1px solid #dce3ed;
-  color: #003087;
-  font-size: 13px;
-  font-weight: 700;
+  padding: 15px 12px 0;
+  border-top: 1px solid var(--border);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 650;
 }
 .sidebar-note small {
-  color: #5d6b82;
+  color: var(--muted);
   font-size: 11px;
   font-weight: 400;
 }
 .app-main {
   min-height: 100vh;
-  margin-left: 264px;
+  margin-left: 232px;
 }
 .app-topbar {
   display: flex;
-  min-height: 76px;
+  min-height: 72px;
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  padding: 12px clamp(24px, 4vw, 64px);
-  border-bottom: 1px solid #e8ecf2;
-  background: #fff;
+  padding: 12px clamp(24px, 4vw, 56px);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
 }
 .topbar-title {
-  color: #081b3f;
-  font-size: 21px;
+  color: var(--ink);
+  font-size: 17px;
   font-weight: 700;
 }
 .topbar-title small {
   display: block;
   margin-top: 4px;
-  color: #66758c;
-  font-size: 11px;
+  color: var(--muted);
+  font-size: 12px;
   font-weight: 400;
 }
 .topbar-mode {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #003087;
+  padding: 7px 11px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--ink);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 650;
 }
 .topbar-mode span {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #00a66a;
+  background: #16845b;
 }
 .mobile-brand {
+  display: none;
+}
+.mobile-nav {
   display: none;
 }
 .sandbox-strip {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 9px;
-  min-height: 39px;
-  background: #ede6ff;
-  color: #35206c;
+  min-height: 40px;
+  padding: 8px clamp(24px, 4vw, 56px);
+  border-bottom: 1px solid #cfe6e6;
+  background: var(--accent-soft);
+  color: var(--accent);
   font-size: 12px;
   font-weight: 600;
 }
 .dashboard-content {
   max-width: 1440px;
   margin: 0 auto;
-  padding: 48px clamp(24px, 4vw, 64px) 80px;
+  padding: 48px clamp(24px, 4vw, 56px) 80px;
 }
 .quick-actions {
   display: flex;
@@ -220,12 +241,49 @@ button {
     display: flex;
     align-items: center;
     gap: 7px;
-    color: #003087;
+    color: var(--ink);
     font-size: 19px;
-    font-weight: 800;
+    font-weight: 750;
+  }
+  .mobile-brand small {
+    display: block;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 450;
+    letter-spacing: 0;
   }
   .topbar-title {
     display: none;
+  }
+  .mobile-nav {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    padding: 8px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    white-space: nowrap;
+    scrollbar-width: none;
+  }
+  .mobile-nav::-webkit-scrollbar {
+    display: none;
+  }
+  .mobile-nav a {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 7px;
+    min-height: 38px;
+    padding: 0 11px;
+    border-radius: 8px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 650;
+  }
+  .mobile-nav a.active,
+  .mobile-nav a:hover {
+    background: var(--accent-soft);
+    color: var(--accent);
   }
   .dashboard-content {
     padding-top: 32px;
@@ -244,7 +302,6 @@ button {
     font-size: 11px;
   }
   .sandbox-strip {
-    padding: 7px 18px;
-    text-align: center;
+    padding: 8px 20px;
   }
 }
