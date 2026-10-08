@@ -23,7 +23,7 @@ const app = createApp({
   agentModel: environment.groqApiKey
     ? new GroqAgentModel(
         environment.groqApiKey,
-        environment.groqModel ?? 'llama-3.3-70b-versatile',
+        environment.groqModel ?? 'qwen/qwen3.8-27b',
       )
     : undefined,
   checkDatabase: database

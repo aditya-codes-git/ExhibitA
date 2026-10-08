@@ -18,7 +18,7 @@ npm run dev
 
 Open [the local setup screen](http://127.0.0.1:5173). API health is at [port 3001](http://127.0.0.1:3001/api/health). Both servers bind to loopback for this development-only foundation. Keep `PORT=3001` unless you also update the Vite proxy.
 
-The fictional [Demo Sports Shop](http://127.0.0.1:5173/demo-store) leads to the [guided case](http://127.0.0.1:5173/demo-case). Add `GROQ_API_KEY` to the server-side `.env` to run the recorded agent; `GROQ_MODEL` optionally overrides the default `llama-3.3-70b-versatile`. No OpenAI API key is used. The saved case appears before the agent runs; if Groq or PayPal fails, it remains incomplete and inspectable. A Sandbox buyer must approve checkout separately, and only a completed capture is displayed as a completed payment. The store is illustrative and does not sell or ship merchandise.
+The fictional [Demo Sports Shop](http://127.0.0.1:5173/demo-store) leads to the [guided case](http://127.0.0.1:5173/demo-case). Add `GROQ_API_KEY` to the server-side `.env` to run the recorded agent; `GROQ_MODEL` optionally overrides the default `qwen/qwen3.8-27b`. No OpenAI API key is used. The saved case appears before the agent runs; if Groq or PayPal fails, it remains incomplete and inspectable. A Sandbox buyer must approve checkout separately, and only a completed capture is displayed as a completed payment. The store is illustrative and does not sell or ship merchandise.
 
 The app starts without credentials and shows integrations as unconfigured. Configure secrets only in the root `.env`; never send them in chat or commit them. See [Supabase setup](docs/SUPABASE_SETUP.md) and [PayPal setup](docs/PAYPAL_SETUP.md).
 
