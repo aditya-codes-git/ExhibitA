@@ -5,7 +5,7 @@ export function createDatabase(connectionString: string) {
   const adapter = new PrismaPg({
     connectionString,
     max: 5,
-    connectionTimeoutMillis: 5000,
+    connectionTimeoutMillis: 15000,
     query_timeout: 5000,
   });
   return new PrismaClient({ adapter });

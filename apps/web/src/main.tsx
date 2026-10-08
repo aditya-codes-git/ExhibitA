@@ -926,9 +926,36 @@ function WorkspaceStrip() {
     <div className="sandbox-strip">
       <ShieldCheck size={16} aria-hidden="true" />
       {isDemoCase
-        ? 'This example is simulated. Starting the test below creates a separate Sandbox order.'
-        : 'You’re viewing test transactions in PayPal Sandbox.'}
+        ? 'Simulated example. Starting the test creates a separate PayPal Sandbox order.'
+        : 'PayPal Sandbox environment · All transactions shown here are test transactions.'}
     </div>
+  );
+}
+
+function WorkspaceNav({ mobile = false }: { mobile?: boolean }) {
+  return (
+    <nav
+      className={mobile ? 'mobile-nav' : 'sidebar-links'}
+      aria-label={
+        mobile ? 'Mobile workspace navigation' : 'Workspace navigation'
+      }
+    >
+      <NavLink to="/" end>
+        <Home size={18} aria-hidden="true" /> Overview
+      </NavLink>
+      <NavLink to="/demo-case">
+        <FileSearch size={18} aria-hidden="true" /> Simulated case
+      </NavLink>
+      <a href="/#purchase">
+        <CreditCard size={18} aria-hidden="true" /> Test purchase
+      </a>
+      <a href="/#orders">
+        <Layers size={18} aria-hidden="true" /> Recent orders
+      </a>
+      <a href="/#integrations">
+        <Database size={18} aria-hidden="true" /> Integrations
+      </a>
+    </nav>
   );
 }
 
@@ -940,33 +967,12 @@ function App() {
           <FileSearch size={29} strokeWidth={2.5} />
           <span>ExhibitA</span>
         </Link>
-        <span className="sidebar-workspace">DEVELOPER WORKSPACE</span>
-        <nav className="sidebar-links" aria-label="Workspace">
-          <NavLink to="/" end>
-            <Home size={19} />
-            Overview
-          </NavLink>
-          <NavLink to="/demo-case">
-            <FileSearch size={19} />
-            Simulated case
-          </NavLink>
-          <a href="/#purchase">
-            <CreditCard size={19} />
-            Test purchase
-          </a>
-          <a href="/#orders">
-            <Layers size={19} />
-            Recent orders
-          </a>
-          <a href="/#integrations">
-            <Database size={19} />
-            Integrations
-          </a>
-        </nav>
+        <span className="sidebar-workspace">EVIDENCE WORKSPACE</span>
+        <WorkspaceNav />
         <div className="sidebar-note">
           <ShieldCheck size={18} />
           <span>
-            Sandbox workspace
+            Sandbox
             <br />
             <small>Test transactions only</small>
           </span>
@@ -976,16 +982,19 @@ function App() {
         <header className="app-topbar">
           <Link to="/" className="mobile-brand">
             <FileSearch size={22} />
-            ExhibitA
+            <span>
+              ExhibitA <small>Evidence workspace</small>
+            </span>
           </Link>
           <span className="topbar-title">
-            Test Store <small>ExhibitA merchant dashboard</small>
+            Evidence workspace <small>Test Store · merchant view</small>
           </span>
           <span className="topbar-mode">
             <span aria-hidden="true" />
-            Sandbox mode
+            Sandbox
           </span>
         </header>
+        <WorkspaceNav mobile />
         <WorkspaceStrip />
         <Routes>
           <Route path="/" element={<Dashboard />} />

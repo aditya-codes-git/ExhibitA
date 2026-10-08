@@ -140,7 +140,7 @@ export function SavedCase() {
           </section>
 
           <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <p className="text-xs font-bold uppercase tracking-wider text-violet-700">
+            <p className="text-xs font-bold uppercase tracking-wider text-teal-800">
               2 · Simulated action
             </p>
             {evidence.agentActionSource === 'SIMULATED_DEMO' ? (

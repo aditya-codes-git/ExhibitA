@@ -53,7 +53,7 @@ export function DemoCase() {
       </Link>
 
       <div className="mt-8 max-w-3xl">
-        <span className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-bold text-violet-800">
+        <span className="inline-flex items-center gap-2 rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-xs font-bold text-teal-900">
           <Info size={14} /> Simulated example
         </span>
         <h1 className="mt-4 text-4xl font-bold tracking-tight text-slate-950 sm:text-5xl">
@@ -90,11 +90,11 @@ export function DemoCase() {
 
         <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 font-bold text-violet-700">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 font-bold text-teal-800">
               2
             </span>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-violet-700">
+              <p className="text-xs font-semibold uppercase tracking-wider text-teal-800">
                 Simulated example: agent action
               </p>
               <h2 className="text-lg font-bold text-slate-950">
