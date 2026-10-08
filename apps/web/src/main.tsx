@@ -24,7 +24,11 @@ import {
   RefreshCw,
   ShieldCheck,
 } from 'lucide-react';
-import { readinessSchema, type Readiness } from '@exhibita/shared';
+import {
+  isCaseCaptureComplete,
+  readinessSchema,
+  type Readiness,
+} from '@exhibita/shared';
 import { DemoCase } from './DemoCase';
 import { SavedCase } from './SavedCase';
 import './style.css';
@@ -61,26 +65,44 @@ function formatCurrency(amountMinor: number, currency: string = 'USD') {
   }).format(amountMinor / 100);
 }
 
-function StatusBadge({ status }: { status: string }) {
-  if (status === 'COMPLETED' || status === 'PAYPAL_COMPLETED') {
+function StatusBadge({ order }: { order: OrderWithCaptures }) {
+  if (isCaseCaptureComplete(order)) {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-800 border border-blue-200">
-        <CheckCircle2 size={13} className="text-blue-600" />
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
+        <CheckCircle2 size={13} />
         Captured
       </span>
     );
   }
-  if (status === 'PAYPAL_ORDER_CREATED') {
+  if (order.status === 'PAYPAL_FAILED' || order.status === 'PAYPAL_DECLINED') {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-800 border border-blue-200">
-        <Clock size={13} className="text-blue-600" />
-        Awaiting Buyer Approval
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-0.5 text-xs font-semibold text-rose-800">
+        Payment failed
+      </span>
+    );
+  }
+  if (
+    order.status === 'PAYPAL_ORDER_CREATED' ||
+    order.status === 'PAYPAL_PENDING' ||
+    order.status === 'COMPLETED' ||
+    order.status === 'PAYPAL_COMPLETED'
+  ) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-900">
+        <Clock size={13} />
+        {order.status === 'PAYPAL_ORDER_CREATED'
+          ? 'Awaiting buyer approval'
+          : order.status === 'PAYPAL_PENDING'
+            ? 'Capture pending'
+            : 'Capture not confirmed'}
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700 border border-slate-200">
-      {status}
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
+      {order.status === 'LOCAL_CREATED'
+        ? 'Preparing order'
+        : order.status.replaceAll('_', ' ')}
     </span>
   );
 }
@@ -212,117 +234,275 @@ function Dashboard() {
 
   const isConfigured = readiness?.paymentFlow === 'ready';
 
-  const completedOrders = orders.filter(
-    (order) => order.status === 'COMPLETED',
-  );
+  const completedOrders = orders.filter(isCaseCaptureComplete);
+  const showOrderSummary =
+    ordersLoaded &&
+    !isChecking &&
+    !loadingOrders &&
+    !ordersError &&
+    !readinessError &&
+    readiness?.database === 'connected';
 
   return (
     <main className="dashboard-content">
-      {/* Hero Header */}
-      <div className="mb-10">
-        <p className="text-sm font-semibold text-blue-700">
-          Merchant workspace / Overview
-        </p>
-        <h1 className="mt-4 text-4xl font-bold tracking-tight text-slate-950 sm:text-5xl">
-          Transaction overview
-        </h1>
-        <p className="mt-3 max-w-3xl text-base text-slate-600 leading-relaxed">
-          Review recent Sandbox orders, check your integrations, and follow a
-          payment from checkout to its stored capture.
-        </p>
-      </div>
-
-      <section className="mb-10" aria-labelledby="quick-access-heading">
-        <h2
-          id="quick-access-heading"
-          className="mb-5 text-lg font-bold text-slate-950"
-        >
-          Quick access
-        </h2>
-        <div className="quick-actions">
-          <a href="#purchase">
-            <span>
-              <CreditCard size={23} />
-            </span>
-            Test purchase
-          </a>
-          <a href="#orders">
-            <span>
-              <Layers size={23} />
-            </span>
-            Recent orders
-          </a>
-          <a href="#integrations">
-            <span>
-              <Database size={23} />
-            </span>
-            Integrations
-          </a>
+      <header className="overview-header">
+        <div>
+          <p className="overview-eyebrow">Merchant overview / Sandbox</p>
+          <h1>Transaction evidence</h1>
+          <p>
+            Review recent orders and see which payments have a stored capture.
+          </p>
         </div>
-      </section>
+        <Link to="/demo-case" className="overview-action">
+          Open $25 guided demo <ArrowRight size={16} aria-hidden="true" />
+        </Link>
+      </header>
 
-      <section className="mb-10" aria-labelledby="activity-heading">
-        <h2
-          id="activity-heading"
-          className="mb-5 text-lg font-bold text-slate-950"
-        >
-          Recent activity
-        </h2>
+      <section className="mb-7" aria-label="Latest 20 order summary">
         <div className="overview-cards">
           <div>
-            <p>Orders in view</p>
-            <strong>{ordersLoaded ? orders.length : '—'}</strong>
-            <small>Latest 20 records</small>
+            <p>Latest 20 orders</p>
+            <strong>{showOrderSummary ? orders.length : '—'}</strong>
           </div>
           <div>
-            <p>Captured in view</p>
-            <strong>{ordersLoaded ? completedOrders.length : '—'}</strong>
-            <small>Completed orders</small>
+            <p>Captured orders</p>
+            <strong>{showOrderSummary ? completedOrders.length : '—'}</strong>
           </div>
           <div>
-            <p>Captured value in view</p>
+            <p>Captured amount · USD</p>
             <strong>
-              {ordersLoaded
+              {showOrderSummary
                 ? formatCurrency(
                     completedOrders.reduce(
-                      (sum, order) => sum + order.amountMinor,
+                      (sum, order) =>
+                        sum +
+                        order.captures
+                          .filter((capture) => capture.status === 'COMPLETED')
+                          .reduce(
+                            (total, capture) => total + capture.amountMinor,
+                            0,
+                          ),
                       0,
                     ),
                   )
                 : '—'}
             </strong>
-            <small>USD · latest 20 records</small>
           </div>
         </div>
       </section>
 
-      {/* Integration Readiness Bar */}
+      {/* Recent evidence records */}
       <section
-        id="integrations"
-        className="mb-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
-        aria-labelledby="system-status-heading"
+        id="orders"
+        className="workspace-panel mb-6"
+        aria-labelledby="recent-transactions-heading"
       >
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
-              <Database size={20} />
-            </div>
-            <div>
-              <h2
-                id="system-status-heading"
-                className="text-base font-bold text-slate-900"
-              >
-                Environment & Integration Readiness
-              </h2>
-              <p className="text-xs text-slate-500">
-                Database connectivity and Sandbox credential configuration
-              </p>
-            </div>
+        <div className="section-header">
+          <div>
+            <p className="section-eyebrow">Case records</p>
+            <h2 id="recent-transactions-heading">Recent orders</h2>
+            <p>Latest 20 Sandbox orders, newest first.</p>
           </div>
           <button
+            type="button"
+            onClick={refreshOrders}
+            disabled={loadingOrders}
+            className="secondary-button"
+          >
+            <RefreshCw
+              size={15}
+              className={loadingOrders ? 'animate-spin' : ''}
+            />
+            Refresh
+          </button>
+        </div>
+
+        {ordersError || readinessError ? (
+          <p
+            role="alert"
+            className="m-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"
+          >
+            {ordersError ||
+              'Could not verify the API. Recent orders may be out of date.'}
+          </p>
+        ) : loadingOrders || (!ordersLoaded && (isChecking || !readiness)) ? (
+          <p role="status" className="order-empty">
+            Loading recent orders…
+          </p>
+        ) : !ordersLoaded ? (
+          <p className="order-empty">
+            Connect Supabase to load recent orders. Check Integrations below.
+          </p>
+        ) : orders.length === 0 ? (
+          <div className="order-empty">
+            <p className="font-semibold text-slate-800">
+              No orders recorded yet
+            </p>
+            <p>Start the guided demo to create the first Sandbox case.</p>
+          </div>
+        ) : (
+          <div className="order-list">
+            {orders.map((order) => (
+              <article key={order.id} className="order-row">
+                <div className="order-row-details">
+                  <div className="order-row-heading">
+                    <strong>
+                      {formatCurrency(order.amountMinor, order.currency)}
+                    </strong>
+                    <StatusBadge order={order} />
+                  </div>
+                  <p>
+                    {order.evidenceCase
+                      ? 'Jersey demo · simulated action'
+                      : 'Manual Sandbox order'}
+                  </p>
+                </div>
+                <div className="order-row-meta">
+                  <time dateTime={order.createdAt}>
+                    {new Date(order.createdAt).toLocaleString()}
+                  </time>
+                  <Link to={`/cases/${order.id}`}>
+                    View record <ArrowRight size={15} aria-hidden="true" />
+                  </Link>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+      {/* Manual Sandbox purchase */}
+      <section
+        id="purchase"
+        className="workspace-panel purchase-panel mb-6"
+        aria-labelledby="simulate-purchase-heading"
+      >
+        <div className="section-header">
+          <div>
+            <p className="section-eyebrow">Secondary tool</p>
+            <h2 id="simulate-purchase-heading">Manual Sandbox purchase</h2>
+            <p>
+              Create a manual test order and approve it as a Sandbox buyer.
+              Agent activity is not recorded in this flow.
+            </p>
+          </div>
+        </div>
+
+        <div className="purchase-body">
+          <form onSubmit={handleCreateOrder} className="space-y-4">
+            <div>
+              <label
+                htmlFor="item-name"
+                className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1"
+              >
+                Demo item label
+              </label>
+              <input
+                id="item-name"
+                type="text"
+                value={itemInput}
+                onChange={(e) => setItemInput(e.target.value)}
+                className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm font-medium text-slate-900 focus:border-teal-700 outline-none"
+                placeholder="e.g. AI-Agent Server Token"
+                required
+              />
+            </div>
+            <p className="text-xs text-slate-500">
+              This label is shown for the checkout demo; it is not stored with
+              the order.
+            </p>
+
+            <div>
+              <label
+                htmlFor="order-amount"
+                className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1"
+              >
+                Amount (USD)
+              </label>
+              <div className="relative">
+                <span className="absolute left-3.5 top-2.5 text-sm font-semibold text-slate-400">
+                  $
+                </span>
+                <input
+                  id="order-amount"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  max="10000"
+                  value={amountInput}
+                  onChange={(e) => setAmountInput(e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 pl-8 pr-3.5 py-2.5 text-sm font-medium text-slate-900 focus:border-teal-700 outline-none"
+                  required
+                />
+              </div>
+            </div>
+
+            {createError && (
+              <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-xs text-rose-800">
+                {createError}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={creatingOrder || !isConfigured}
+              className="purchase-submit flex w-full items-center justify-center gap-2 px-4 py-3 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {creatingOrder ? (
+                <>
+                  <RefreshCw size={15} className="animate-spin" />
+                  Initializing PayPal Order…
+                </>
+              ) : (
+                <>
+                  <CreditCard size={16} />
+                  Create PayPal Sandbox Order
+                </>
+              )}
+            </button>
+          </form>
+        </div>
+
+        {createdOrderResult && (
+          <div className="mt-6 rounded-lg border border-teal-200 bg-teal-50 p-4 text-xs">
+            <div className="mb-2 flex items-center gap-2 font-bold text-teal-900">
+              <CheckCircle2 size={16} />
+              PayPal Order Initialized
+            </div>
+            <p className="mb-2 break-all text-teal-900">
+              Order ID:{' '}
+              <code className="font-mono">
+                {createdOrderResult.paypalOrderId}
+              </code>
+            </p>
+            <a
+              href={createdOrderResult.approvalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-lg bg-teal-800 px-3.5 py-2 text-xs font-bold text-white hover:bg-teal-900"
+            >
+              Approve via PayPal Sandbox <ExternalLink size={13} />
+            </a>
+          </div>
+        )}
+      </section>
+
+      {/* Integration readiness */}
+      <section
+        id="integrations"
+        className="workspace-panel"
+        aria-labelledby="system-status-heading"
+      >
+        <div className="section-header">
+          <div>
+            <p className="section-eyebrow">Connections</p>
+            <h2 id="system-status-heading">Integration readiness</h2>
+            <p>Database and PayPal Sandbox availability for test orders.</p>
+          </div>
+          <button
+            type="button"
             onClick={() => setAttempt((v) => v + 1)}
             disabled={isChecking}
-            className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
+            className="secondary-button"
           >
             <RefreshCw size={13} className={isChecking ? 'animate-spin' : ''} />
             {isChecking ? 'Checking…' : 'Recheck Status'}
@@ -336,8 +516,8 @@ function Dashboard() {
           </div>
         )}
 
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+        <div className="readiness-grid">
+          <div>
             <span className="text-xs font-medium text-slate-500">
               Supabase PostgreSQL
             </span>
@@ -357,7 +537,7 @@ function Dashboard() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+          <div>
             <span className="text-xs font-medium text-slate-500">
               PayPal Sandbox OAuth
             </span>
@@ -379,14 +559,14 @@ function Dashboard() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+          <div>
             <span className="text-xs font-medium text-slate-500">
               Payment Pipeline
             </span>
             <div className="mt-2 flex items-center gap-2">
               <span
                 className={`h-2.5 w-2.5 rounded-full ${
-                  isConfigured ? 'bg-blue-600' : 'bg-slate-400'
+                  isConfigured ? 'bg-emerald-500' : 'bg-slate-400'
                 }`}
               />
               <span className="text-sm font-semibold text-slate-900">
@@ -397,7 +577,7 @@ function Dashboard() {
         </div>
 
         {!isConfigured && (
-          <div className="mt-4 rounded-xl bg-blue-50 border border-blue-200 p-4 text-xs text-blue-900 leading-relaxed">
+          <div className="m-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-xs leading-relaxed text-amber-900">
             <p className="font-semibold mb-1">Integration checks:</p>
             <p>
               {readiness?.database !== 'connected' && (
@@ -419,264 +599,6 @@ function Dashboard() {
           </div>
         )}
       </section>
-
-      {/* Two Column Layout: Purchase Simulator & Live Evidence Stream */}
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
-        {/* Left: Purchase Trigger */}
-        <section
-          id="purchase"
-          className="lg:col-span-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col justify-between"
-          aria-labelledby="simulate-purchase-heading"
-        >
-          <div>
-            <div className="flex items-center gap-2.5 text-slate-900 mb-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white">
-                <CreditCard size={18} />
-              </div>
-              <h2 id="simulate-purchase-heading" className="text-lg font-bold">
-                PayPal Sandbox Purchase
-              </h2>
-            </div>
-            <p className="text-xs text-slate-500 mb-6">
-              Create a manual test order and approve it as a Sandbox buyer.
-              Agent activity is not recorded in this flow.
-            </p>
-
-            <form onSubmit={handleCreateOrder} className="space-y-4">
-              <div>
-                <label
-                  htmlFor="item-name"
-                  className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1"
-                >
-                  Demo item label
-                </label>
-                <input
-                  id="item-name"
-                  type="text"
-                  value={itemInput}
-                  onChange={(e) => setItemInput(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-medium text-slate-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none"
-                  placeholder="e.g. AI-Agent Server Token"
-                  required
-                />
-              </div>
-              <p className="text-xs text-slate-500">
-                This label is shown for the checkout demo; it is not stored with
-                the order.
-              </p>
-
-              <div>
-                <label
-                  htmlFor="order-amount"
-                  className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1"
-                >
-                  Amount (USD)
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-2.5 text-sm font-semibold text-slate-400">
-                    $
-                  </span>
-                  <input
-                    id="order-amount"
-                    type="number"
-                    step="0.01"
-                    min="0.01"
-                    max="10000"
-                    value={amountInput}
-                    onChange={(e) => setAmountInput(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 pl-8 pr-3.5 py-2.5 text-sm font-medium text-slate-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none"
-                    required
-                  />
-                </div>
-              </div>
-
-              {createError && (
-                <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-xs text-rose-800">
-                  {createError}
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={creatingOrder || !isConfigured}
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-blue-700 py-3 px-4 text-sm font-bold text-white shadow-sm hover:bg-blue-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {creatingOrder ? (
-                  <>
-                    <RefreshCw size={15} className="animate-spin" />
-                    Initializing PayPal Order…
-                  </>
-                ) : (
-                  <>
-                    <CreditCard size={16} />
-                    Create PayPal Sandbox Order
-                  </>
-                )}
-              </button>
-            </form>
-          </div>
-
-          {/* Result after creation */}
-          {createdOrderResult && (
-            <div className="mt-6 rounded-xl border border-blue-200 bg-blue-50/60 p-4 text-xs">
-              <div className="flex items-center gap-2 font-bold text-blue-900 mb-2">
-                <CheckCircle2 size={16} className="text-blue-700" />
-                PayPal Order Initialized
-              </div>
-              <p className="text-blue-800 mb-2">
-                Order ID:{' '}
-                <code className="font-mono">
-                  {createdOrderResult.paypalOrderId}
-                </code>
-              </p>
-              <a
-                href={createdOrderResult.approvalUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-lg bg-blue-700 px-3.5 py-2 text-xs font-bold text-white hover:bg-blue-800 transition shadow-sm"
-              >
-                Approve via PayPal Sandbox <ExternalLink size={13} />
-              </a>
-            </div>
-          )}
-        </section>
-
-        {/* Right: Traceable Evidence Timeline / Orders Explorer */}
-        <section
-          id="orders"
-          className="lg:col-span-7 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
-          aria-labelledby="recent-transactions-heading"
-        >
-          <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900 text-white">
-                <Layers size={18} />
-              </div>
-              <div>
-                <h2
-                  id="recent-transactions-heading"
-                  className="text-lg font-bold text-slate-900"
-                >
-                  Recent Sandbox orders
-                </h2>
-                <p className="text-xs text-slate-500">
-                  Supabase private schema:{' '}
-                  <code className="font-mono text-blue-700">exhibita</code>
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={refreshOrders}
-              disabled={loadingOrders}
-              className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50"
-            >
-              <RefreshCw
-                size={12}
-                className={loadingOrders ? 'animate-spin' : ''}
-              />
-              Refresh
-            </button>
-          </div>
-
-          {ordersError ? (
-            <p
-              role="alert"
-              className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900"
-            >
-              {ordersError}
-            </p>
-          ) : !ordersLoaded ? (
-            <div className="py-12 text-center">
-              <Database size={36} className="mx-auto mb-3 text-slate-300" />
-              <p className="text-sm font-semibold text-slate-700">
-                Connect Supabase to load orders
-              </p>
-              <p className="mx-auto mt-1 max-w-sm text-xs text-slate-500">
-                Recent Sandbox orders will appear after the database connection
-                is available.
-              </p>
-            </div>
-          ) : orders.length === 0 ? (
-            <div className="py-12 text-center">
-              <FileSearch size={36} className="mx-auto text-slate-300 mb-3" />
-              <p className="text-sm font-semibold text-slate-700">
-                No orders recorded yet
-              </p>
-              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-                Orders and their PayPal capture references will appear here
-                after a Sandbox checkout.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {orders.map((order) => {
-                const capture = order.captures?.[0];
-                return (
-                  <div
-                    key={order.id}
-                    className="rounded-xl border border-slate-100 bg-slate-50 p-4 transition hover:border-slate-300"
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-base font-bold text-slate-900">
-                          {formatCurrency(order.amountMinor, order.currency)}
-                        </span>
-                        <StatusBadge status={order.status} />
-                      </div>
-                      <span className="text-xs font-mono text-slate-500">
-                        {new Date(order.createdAt).toLocaleTimeString([], {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          second: '2-digit',
-                        })}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-600 mt-3 pt-3 border-t border-slate-200/60 font-mono">
-                      <div>
-                        <span className="text-slate-400 block text-[10px] uppercase font-sans font-bold">
-                          Local Order ID
-                        </span>
-                        <span className="truncate block">{order.id}</span>
-                      </div>
-                      <div>
-                        <span className="text-slate-400 block text-[10px] uppercase font-sans font-bold">
-                          PayPal Order ID
-                        </span>
-                        <span>{order.paypalOrderId || 'Pending'}</span>
-                      </div>
-                      {capture && (
-                        <div className="sm:col-span-2 bg-emerald-50/70 border border-emerald-200/60 rounded-lg p-2.5 text-emerald-950 font-sans mt-1">
-                          <div className="flex items-center justify-between text-xs font-semibold">
-                            <span className="flex items-center gap-1.5 text-emerald-800">
-                              <ShieldCheck
-                                size={14}
-                                className="text-emerald-600"
-                              />
-                              Capture stored in Supabase
-                            </span>
-                            <span className="font-mono text-[11px] text-emerald-700">
-                              Capture ID: {capture.paypalCaptureId}
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    <Link
-                      to={`/cases/${order.id}`}
-                      className="mt-3 inline-flex text-xs font-bold text-blue-700 hover:underline"
-                    >
-                      {order.evidenceCase
-                        ? 'View saved case'
-                        : 'View order record'}
-                    </Link>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
-      </div>
     </main>
   );
 }
