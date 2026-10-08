@@ -8,8 +8,10 @@ import {
   FileSearch,
 } from 'lucide-react';
 import {
+  demoProductSchema,
   isCaseCaptureComplete,
   orderItemSchema,
+  type EvidenceEventItem,
   type OrderItem,
 } from '@exhibita/shared';
 
@@ -21,6 +23,26 @@ const money = (minor: number) =>
 
 function time(value: string | null) {
   return value ? new Date(value).toLocaleString() : 'Not recorded';
+}
+
+function eventFacts(event: EvidenceEventItem) {
+  if (event.source === 'DEMO_STORE') {
+    const product = demoProductSchema.safeParse(event.payload.product);
+    return product.success
+      ? `${product.data.itemName} · ${product.data.edition} · ${product.data.shopName} · ${money(product.data.amountMinor)} USD`
+      : 'Product payload is missing or invalid.';
+  }
+  if (event.source === 'EXHIBITA_TOOL') {
+    return typeof event.payload.paypalOrderId === 'string'
+      ? `PayPal Sandbox order ${event.payload.paypalOrderId} · ${typeof event.payload.amountMinor === 'number' ? money(event.payload.amountMinor) : 'amount missing'} ${event.payload.currency === 'USD' ? 'USD' : 'currency unverified'} · buyer approval still required`
+      : 'Checkout result is missing an order reference.';
+  }
+  const args = event.payload.arguments;
+  if (typeof args !== 'object' || !args) return 'Tool arguments were invalid.';
+  const values = args as Record<string, unknown>;
+  return event.payload.tool === 'inspect_product'
+    ? `Requested product: ${String(values.productId)}`
+    : `Requested product: ${String(values.productId)} · Amount: ${String(values.amountMinor)} USD minor units`;
 }
 
 export function SavedCase() {
@@ -72,7 +94,7 @@ export function SavedCase() {
         </p>
         <Link
           to="/"
-          className="mt-4 inline-block font-semibold text-blue-700 hover:underline"
+          className="mt-4 inline-block font-semibold text-teal-800 hover:underline"
         >
           Return to dashboard
         </Link>
@@ -85,20 +107,40 @@ export function SavedCase() {
     order.captures.find((item) => item.status === 'COMPLETED') ??
     order.captures[0];
   const completed = isCaseCaptureComplete(order);
+  const recorded = Boolean(evidence?.agentRunStatus);
+  const productEvent = order.evidenceEvents.find(
+    (event) => event.source === 'DEMO_STORE' && event.kind === 'TOOL_RESULT',
+  );
+  const product = demoProductSchema.safeParse(productEvent?.payload.product);
+  const productMatches =
+    product.success &&
+    Boolean(evidence) &&
+    product.data.itemName === evidence?.itemName &&
+    product.data.shopName === evidence?.shopName &&
+    product.data.amountMinor === order.amountMinor;
+  const checkoutRequested = order.evidenceEvents.some(
+    (event) =>
+      event.source === 'AGENT_MODEL' &&
+      event.kind === 'TOOL_REQUEST' &&
+      event.payload.tool === 'initiate_sandbox_checkout' &&
+      typeof event.payload.arguments === 'object' &&
+      event.payload.arguments !== null &&
+      (event.payload.arguments as Record<string, unknown>).amountMinor === 2500,
+  );
 
   return (
     <main className="dashboard-content">
       <Link
         to="/"
-        className="inline-flex items-center gap-2 text-sm font-semibold text-blue-700 hover:underline"
+        className="inline-flex items-center gap-2 text-sm font-semibold text-teal-800 hover:underline"
       >
         <ArrowLeft size={16} /> Back to dashboard
       </Link>
 
       <div className="mt-8 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-wider text-blue-700">
-            Saved Sandbox record
+          <p className="text-xs font-bold uppercase tracking-wider text-teal-800">
+            {recorded ? 'Recorded agent case' : 'Saved Sandbox record'}
           </p>
           <h1 className="mt-2 text-3xl font-bold text-slate-950 sm:text-4xl">
             {evidence ? 'Football jersey evidence case' : 'Manual test order'}
@@ -122,10 +164,10 @@ export function SavedCase() {
       {evidence ? (
         <div className="mt-8 grid gap-5 lg:grid-cols-2">
           <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <p className="text-xs font-bold uppercase tracking-wider text-blue-700">
-              1 · Preset buyer request
+            <p className="text-xs font-bold uppercase tracking-wider text-teal-800">
+              1 · Demo-submitted buyer request
             </p>
-            <blockquote className="mt-4 border-l-4 border-blue-600 bg-blue-50 p-4 text-lg font-medium text-slate-900">
+            <blockquote className="mt-4 border-l-4 border-teal-700 bg-teal-50 p-4 text-lg font-medium text-slate-900">
               {evidence.buyerInstruction}
             </blockquote>
             <p className="mt-4 text-sm text-slate-600">
@@ -141,9 +183,25 @@ export function SavedCase() {
 
           <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <p className="text-xs font-bold uppercase tracking-wider text-teal-800">
-              2 · Simulated action
+              2 · {recorded ? 'Recorded agent activity' : 'Simulated action'}
             </p>
-            {evidence.agentActionSource === 'SIMULATED_DEMO' ? (
+            {recorded ? (
+              <>
+                <p className="mt-4 text-lg font-bold text-slate-950">
+                  {evidence.agentRunStatus === 'CHECKOUT_READY'
+                    ? 'Sandbox checkout prepared'
+                    : evidence.agentRunStatus === 'FAILED'
+                      ? 'Agent run incomplete'
+                      : evidence.agentRunStatus === 'RUNNING'
+                        ? 'Agent run in progress'
+                        : 'Agent run not started'}
+                </p>
+                <p className="mt-2 text-sm text-slate-600">
+                  Source: recorded model tool calls and local tool results.{' '}
+                  {order.evidenceEvents.length} events stored.
+                </p>
+              </>
+            ) : evidence.agentActionSource === 'SIMULATED_DEMO' ? (
               <>
                 <p className="mt-4 text-lg font-bold text-slate-950">
                   Demo flow initiated the requested PayPal order
@@ -160,8 +218,9 @@ export function SavedCase() {
               </p>
             )}
             <p className="mt-4 text-xs text-slate-500">
-              This is scripted demo activity, not telemetry from an external AI
-              agent or proof that a shop was visited.
+              {recorded
+                ? 'Any recorded product lookup reads a controlled server record; it does not prove an external website visit.'
+                : 'This is scripted demo activity, not telemetry from an external AI agent or proof that a shop was visited.'}
             </p>
           </section>
         </div>
@@ -172,9 +231,69 @@ export function SavedCase() {
         </p>
       )}
 
+      {recorded && (
+        <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <p className="text-xs font-bold uppercase tracking-wider text-teal-800">
+            3 · Source-labeled evidence trail
+          </p>
+          <h2 className="mt-2 text-xl font-bold text-slate-950">
+            What was actually recorded
+          </h2>
+          {order.evidenceEvents.length ? (
+            <ol className="evidence-event-list">
+              {order.evidenceEvents.map((event) => (
+                <li key={event.id}>
+                  <span className="evidence-event-source">
+                    {event.source.replaceAll('_', ' ')} ·{' '}
+                    {event.kind.replaceAll('_', ' ')}
+                  </span>
+                  <strong>
+                    {event.payload.tool === 'inspect_product'
+                      ? 'Product lookup requested'
+                      : event.payload.tool === 'initiate_sandbox_checkout'
+                        ? 'Sandbox checkout requested'
+                        : event.source === 'DEMO_STORE'
+                          ? 'Product record returned'
+                          : event.source === 'EXHIBITA_TOOL'
+                            ? 'PayPal order recorded'
+                            : 'Invalid tool request'}
+                  </strong>
+                  <p className="evidence-event-facts">{eventFacts(event)}</p>
+                  <p>
+                    Observed {time(event.occurredAt)} · Stored{' '}
+                    {time(event.recordedAt)}
+                  </p>
+                  <code>Event ID: {event.externalEventId}</code>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="mt-4 text-sm text-amber-800">
+              No agent tool events are stored yet.
+            </p>
+          )}
+          <div className="evidence-checks">
+            <p>
+              <strong>
+                {productMatches ? 'Matched' : 'Missing or conflicting'}
+              </strong>{' '}
+              Store product, item, edition, shop, and $25 amount
+            </p>
+            <p>
+              <strong>{checkoutRequested ? 'Recorded' : 'Missing'}</strong>{' '}
+              Agent checkout request for $25
+            </p>
+            <p>
+              <strong>{completed ? 'Confirmed' : 'Missing'}</strong> Completed
+              PayPal Sandbox capture
+            </p>
+          </div>
+        </section>
+      )}
+
       <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex items-center gap-3">
-          <FileSearch className="text-blue-700" size={22} />
+          <FileSearch className="text-teal-800" size={22} />
           <h2 className="text-xl font-bold text-slate-950">
             PayPal Sandbox payment record
           </h2>
@@ -241,7 +360,7 @@ export function SavedCase() {
         )}
         <p className="mt-5 text-xs text-slate-500">
           PayPal confirms Sandbox payment details only. It does not verify the
-          jersey, edition, fictional shop, or simulated agent action.
+          jersey, edition, fictional shop, or agent activity.
         </p>
       </section>
     </main>

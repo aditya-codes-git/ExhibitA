@@ -7,7 +7,6 @@ import {
   Route,
   Routes,
   useMatch,
-  useNavigate,
   useSearchParams,
 } from 'react-router';
 import {
@@ -31,6 +30,7 @@ import {
 } from '@exhibita/shared';
 import { DemoCase } from './DemoCase';
 import { SavedCase } from './SavedCase';
+import { DemoStore } from './DemoStore';
 import './style.css';
 
 type OrderWithCaptures = {
@@ -621,7 +621,6 @@ type CaptureResult = {
 
 function ReturnPage() {
   const [params] = useSearchParams();
-  const navigate = useNavigate();
   const orderId = params.get('orderId');
   const token = params.get('token'); // PayPal Order ID
 
@@ -671,13 +670,13 @@ function ReturnPage() {
   }, [orderId, token]);
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-16">
+    <main className="evidence-outcome mx-auto max-w-2xl px-6 py-16">
       <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
         {status === 'capturing' && (
           <div className="text-center py-8">
             <RefreshCw
               size={36}
-              className="mx-auto text-blue-600 animate-spin mb-4"
+              className="mx-auto text-teal-700 animate-spin mb-4"
             />
             <h1 className="text-2xl font-bold text-slate-900">
               Capturing PayPal Sandbox Payment
@@ -705,7 +704,7 @@ function ReturnPage() {
               {orderId && (
                 <Link
                   to={`/cases/${orderId}`}
-                  className="rounded-xl border border-slate-300 px-5 py-2.5 text-sm font-semibold text-blue-700 hover:bg-slate-50"
+                  className="rounded-xl border border-slate-300 px-5 py-2.5 text-sm font-semibold text-teal-800 hover:bg-slate-50"
                 >
                   View saved record
                 </Link>
@@ -743,28 +742,28 @@ function ReturnPage() {
               </h2>
               <ol className="relative border-l border-slate-200 space-y-4 ml-2">
                 <li className="ml-4">
-                  <div className="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full border border-white bg-blue-600" />
+                  <div className="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full border border-white bg-teal-700" />
                   <p className="text-xs font-bold text-slate-800">
-                    Step 1: Local test order created
+                    Local Sandbox order created
                   </p>
                   <p className="text-[11px] font-mono text-slate-500">
                     Order ID: {orderId}
                   </p>
                 </li>
                 <li className="ml-4">
-                  <div className="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full border border-white bg-blue-600" />
+                  <div className="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full border border-white bg-teal-700" />
                   <p className="text-xs font-bold text-slate-800">
-                    Step 2: PayPal Order Created with Request Idempotency
+                    PayPal Sandbox order created
                   </p>
                   <p className="text-[11px] font-mono text-slate-500">
                     PayPal Order ID:{' '}
-                    {token || capturedData?.order?.paypalOrderId}
+                    {capturedData?.order?.paypalOrderId || 'Not recorded'}
                   </p>
                 </li>
                 <li className="ml-4">
-                  <div className="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full border border-white bg-blue-600" />
+                  <div className="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full border border-white bg-teal-700" />
                   <p className="text-xs font-bold text-slate-800">
-                    Step 3: PayPal reported a completed capture
+                    PayPal reported a completed capture
                   </p>
                   <p className="text-[11px] font-mono text-slate-500">
                     Capture status: {capturedData?.capture?.status}
@@ -773,7 +772,7 @@ function ReturnPage() {
                 <li className="ml-4">
                   <div className="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full border border-white bg-emerald-600" />
                   <p className="text-xs font-bold text-emerald-800">
-                    Step 4: Capture record stored in exhibita.Capture
+                    Capture record stored by ExhibitA
                   </p>
                   <p className="text-[11px] font-mono text-emerald-700">
                     Capture ID: {capturedData?.capture?.paypalCaptureId} ·
@@ -787,17 +786,17 @@ function ReturnPage() {
               {orderId && (
                 <Link
                   to={`/cases/${orderId}`}
-                  className="rounded-xl border border-slate-300 px-5 py-2.5 text-sm font-semibold text-blue-700 hover:bg-slate-50"
+                  className="rounded-xl border border-slate-300 px-5 py-2.5 text-sm font-semibold text-teal-800 hover:bg-slate-50"
                 >
                   View saved record
                 </Link>
               )}
-              <button
-                onClick={() => navigate('/')}
-                className="flex items-center gap-2 rounded-xl bg-blue-700 px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-800 transition shadow-sm"
+              <Link
+                to="/"
+                className="flex items-center gap-2 rounded-xl bg-teal-800 px-5 py-2.5 text-sm font-bold text-white hover:bg-teal-900 transition shadow-sm"
               >
-                Return to Dashboard <ArrowRight size={15} />
-              </button>
+                Return to dashboard <ArrowRight size={15} />
+              </Link>
             </div>
           </div>
         )}
@@ -810,11 +809,11 @@ function CancelPage() {
   const [params] = useSearchParams();
   const orderId = params.get('orderId');
   return (
-    <main className="mx-auto max-w-lg px-6 py-16 text-center">
+    <main className="evidence-outcome mx-auto max-w-lg px-6 py-16 text-center">
       <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
         <AlertTriangle size={36} className="mx-auto text-amber-500 mb-3" />
         <h1 className="text-xl font-bold text-slate-900">
-          Payment Cancelled by Buyer
+          Sandbox checkout cancelled
         </h1>
         <p className="mt-2 text-sm text-slate-600">
           You returned from the Sandbox checkout without capturing through
@@ -824,7 +823,7 @@ function CancelPage() {
           {orderId && (
             <Link
               to={`/cases/${orderId}`}
-              className="inline-flex items-center rounded-xl border border-slate-300 px-4 py-2.5 text-xs font-bold text-blue-700 hover:bg-slate-50"
+              className="inline-flex items-center rounded-xl border border-slate-300 px-4 py-2.5 text-xs font-bold text-teal-800 hover:bg-slate-50"
             >
               View saved record
             </Link>
@@ -848,7 +847,7 @@ function WorkspaceStrip() {
     <div className="sandbox-strip">
       <ShieldCheck size={16} aria-hidden="true" />
       {isDemoCase
-        ? 'Simulated example. Starting the test creates a separate PayPal Sandbox order.'
+        ? 'Controlled agent demonstration · PayPal Sandbox test transactions only.'
         : 'PayPal Sandbox environment · All transactions shown here are test transactions.'}
     </div>
   );
@@ -866,7 +865,7 @@ function WorkspaceNav({ mobile = false }: { mobile?: boolean }) {
         <Home size={18} aria-hidden="true" /> Overview
       </NavLink>
       <NavLink to="/demo-case">
-        <FileSearch size={18} aria-hidden="true" /> Simulated case
+        <FileSearch size={18} aria-hidden="true" /> Guided case
       </NavLink>
       <a href="/#purchase">
         <CreditCard size={18} aria-hidden="true" /> Test purchase
@@ -881,9 +880,9 @@ function WorkspaceNav({ mobile = false }: { mobile?: boolean }) {
   );
 }
 
-function App() {
+function WorkspaceApp() {
   return (
-    <BrowserRouter>
+    <>
       <aside className="app-sidebar" aria-label="Main navigation">
         <Link to="/" className="sidebar-brand">
           <FileSearch size={29} strokeWidth={2.5} />
@@ -937,6 +936,17 @@ function App() {
           />
         </Routes>
       </div>
+    </>
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/demo-store" element={<DemoStore />} />
+        <Route path="*" element={<WorkspaceApp />} />
+      </Routes>
     </BrowserRouter>
   );
 }

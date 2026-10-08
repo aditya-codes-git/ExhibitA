@@ -2,7 +2,7 @@
 
 ExhibitA helps merchants turn scattered AI-purchase activity into organized, evidence-backed transaction records using PayPal and AI.
 
-The local demo has a merchant dashboard, a saved jersey evidence case, and a verified PayPal Sandbox capture stored in Supabase. The agent action is explicitly simulated; real agent evidence, AI analysis, and dispute operations are future work. See [STATUS](docs/STATUS.md) for verified results and [product direction](docs/PRODUCT_DIRECTION.md) for the next milestone.
+The local demo has a merchant dashboard, a fictional single-product jersey store, and a guided Sandbox case. With a server-side Groq key, its constrained agent reads the fixed store record and requests a $25 PayPal Sandbox checkout through recorded tools. ExhibitA stores each tool request/result beside the PayPal order and capture in Supabase. Historical `SIMULATED_DEMO` cases remain explicitly scripted. See [STATUS](docs/STATUS.md) for verified results and limits.
 
 ## Stack
 
@@ -18,6 +18,8 @@ npm run dev
 
 Open [the local setup screen](http://127.0.0.1:5173). API health is at [port 3001](http://127.0.0.1:3001/api/health). Both servers bind to loopback for this development-only foundation. Keep `PORT=3001` unless you also update the Vite proxy.
 
+The fictional [Demo Sports Shop](http://127.0.0.1:5173/demo-store) leads to the [guided case](http://127.0.0.1:5173/demo-case). Add `GROQ_API_KEY` to the server-side `.env` to run the recorded agent; `GROQ_MODEL` optionally overrides the default `llama-3.3-70b-versatile`. No OpenAI API key is used. The saved case appears before the agent runs; if Groq or PayPal fails, it remains incomplete and inspectable. A Sandbox buyer must approve checkout separately, and only a completed capture is displayed as a completed payment. The store is illustrative and does not sell or ship merchandise.
+
 The app starts without credentials and shows integrations as unconfigured. Configure secrets only in the root `.env`; never send them in chat or commit them. See [Supabase setup](docs/SUPABASE_SETUP.md) and [PayPal setup](docs/PAYPAL_SETUP.md).
 
 ## Checks
@@ -32,7 +34,7 @@ npm run build
 npm audit
 ```
 
-Automated tests cover the API and payment behavior with mocks. A separate live Sandbox buyer checkout and direct Supabase read verified one completed $25 demo case; see [STATUS](docs/STATUS.md). `npm run paypal:probe` checks real Sandbox OAuth when credentials are configured; it does not create an order or charge anything.
+Automated tests cover the API, guarded agent sequence, and payment behavior with mocks. A separate live Sandbox buyer checkout and direct Supabase read verified one historical scripted $25 case; see [STATUS](docs/STATUS.md). `npm run paypal:probe` checks real Sandbox OAuth when credentials are configured; it does not create an order or charge anything.
 
 ## Database
 

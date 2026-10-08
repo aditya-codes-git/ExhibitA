@@ -23,6 +23,16 @@ export const createOrderResponseSchema = z.object({
 });
 export type CreateOrderResponse = z.infer<typeof createOrderResponseSchema>;
 
+export const demoProductSchema = z.object({
+  productId: z.literal('jersey-2026-home-player'),
+  itemName: z.string(),
+  edition: z.literal('Player edition'),
+  shopName: z.literal('Demo Sports Shop'),
+  amountMinor: z.literal(2500),
+  currency: z.literal('USD'),
+});
+export type DemoProduct = z.infer<typeof demoProductSchema>;
+
 export const captureItemSchema = z.object({
   id: z.string().uuid(),
   orderId: z.string().uuid(),
@@ -43,8 +53,31 @@ export const evidenceCaseSchema = z.object({
   agentActionSource: z.literal('SIMULATED_DEMO').nullable(),
   agentActionAt: z.string().nullable(),
   recordedAt: z.string(),
+  agentRunStatus: z
+    .enum(['READY', 'RUNNING', 'CHECKOUT_READY', 'FAILED'])
+    .nullable()
+    .optional(),
 });
 export type EvidenceCaseItem = z.infer<typeof evidenceCaseSchema>;
+
+export const evidenceEventSchema = z.object({
+  id: z.string().uuid(),
+  orderId: z.string().uuid(),
+  source: z.enum(['AGENT_MODEL', 'DEMO_STORE', 'EXHIBITA_TOOL']),
+  kind: z.enum(['TOOL_REQUEST', 'TOOL_RESULT']),
+  externalEventId: z.string(),
+  occurredAt: z.string(),
+  recordedAt: z.string(),
+  payload: z.record(z.string(), z.unknown()),
+});
+export type EvidenceEventItem = z.infer<typeof evidenceEventSchema>;
+
+export const createAgentCaseResponseSchema = z.object({
+  orderId: z.string().uuid(),
+});
+export type CreateAgentCaseResponse = z.infer<
+  typeof createAgentCaseResponseSchema
+>;
 
 export const orderItemSchema = z.object({
   id: z.string().uuid(),
@@ -60,6 +93,7 @@ export const orderItemSchema = z.object({
   updatedAt: z.string(),
   captures: z.array(captureItemSchema).default([]),
   evidenceCase: evidenceCaseSchema.nullable().optional(),
+  evidenceEvents: z.array(evidenceEventSchema).default([]),
 });
 export type OrderItem = z.infer<typeof orderItemSchema>;
 

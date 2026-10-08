@@ -32,6 +32,7 @@ model Order {
   updatedAt        DateTime  @updatedAt @db.Timestamptz(3)
   captures         Capture[]
   evidenceCase     EvidenceCase?
+  evidenceEvents   EvidenceEvent[]
 
   @@index([merchantId, createdAt])
   @@schema("exhibita")
@@ -60,7 +61,24 @@ model EvidenceCase {
   shopName          String    @db.VarChar(200)
   agentActionSource String?   @db.VarChar(40)
   agentActionAt     DateTime? @db.Timestamptz(3)
+  agentRunStatus    String?   @db.VarChar(40)
   recordedAt        DateTime  @default(now()) @db.Timestamptz(3)
 
+  @@schema("exhibita")
+}
+
+model EvidenceEvent {
+  id              String   @id @default(uuid()) @db.Uuid
+  orderId         String   @db.Uuid
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  source          String   @db.VarChar(40)
+  kind            String   @db.VarChar(40)
+  externalEventId String   @db.VarChar(120)
+  occurredAt      DateTime @db.Timestamptz(3)
+  recordedAt      DateTime @default(now()) @db.Timestamptz(3)
+  payload         Json     @db.JsonB
+
+  @@unique([orderId, source, externalEventId])
+  @@index([orderId, occurredAt, recordedAt])
   @@schema("exhibita")
 }

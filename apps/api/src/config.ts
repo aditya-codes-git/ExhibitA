@@ -5,6 +5,8 @@ export type Config = {
   databaseUrl?: string;
   paypalClientId?: string;
   paypalClientSecret?: string;
+  groqApiKey?: string;
+  groqModel?: string;
 };
 const optional = (schema: z.ZodType) =>
   z.preprocess(
@@ -27,6 +29,8 @@ const schema = z
     ),
     PAYPAL_CLIENT_ID: optional(z.string().trim().min(1)),
     PAYPAL_CLIENT_SECRET: optional(z.string().trim().min(1)),
+    GROQ_API_KEY: optional(z.string().trim().min(1)),
+    GROQ_MODEL: optional(z.string().trim().min(1)),
   })
   .superRefine((value, ctx) => {
     if (
@@ -59,6 +63,12 @@ export function parseConfig(env: Record<string, string | undefined>): Config {
       : {}),
     ...(result.data.PAYPAL_CLIENT_SECRET
       ? { paypalClientSecret: String(result.data.PAYPAL_CLIENT_SECRET) }
+      : {}),
+    ...(result.data.GROQ_API_KEY
+      ? { groqApiKey: String(result.data.GROQ_API_KEY) }
+      : {}),
+    ...(result.data.GROQ_MODEL
+      ? { groqModel: String(result.data.GROQ_MODEL) }
       : {}),
   };
 }

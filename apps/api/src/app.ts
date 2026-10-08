@@ -6,13 +6,12 @@ import { createOrderRequestSchema } from '@exhibita/shared';
 import type { Config } from './config.js';
 import type { PrismaClient } from './generated/prisma/client.js';
 import { PayPalClient, extractCaptureDetails } from './paypal.js';
+import { demoBuyerInstruction, demoProduct } from './demo-store.js';
+import { runJerseyAgent, type AgentModel } from './jersey-agent.js';
 
 const jerseyDemo = {
-  itemName: 'Real Madrid 2026 home jersey, player edition',
-  shopName: 'Demo Sports Shop',
-  buyerInstruction:
-    'Buy the Real Madrid 2026 home jersey, player edition, for $25 from Demo Sports Shop.',
-  amountMinor: 2500,
+  ...demoProduct,
+  buyerInstruction: demoBuyerInstruction,
 } as const;
 
 export function createApp({
@@ -20,11 +19,13 @@ export function createApp({
   checkDatabase,
   database,
   paypalClient,
+  agentModel,
 }: {
   config: Config;
   checkDatabase?: () => Promise<void>;
   database?: PrismaClient;
   paypalClient?: PayPalClient;
+  agentModel?: AgentModel;
 }) {
   const app = express();
   app.disable('x-powered-by');
@@ -35,6 +36,10 @@ export function createApp({
     res
       .set('Cache-Control', 'no-store')
       .json({ status: 'ok', service: 'exhibita-api' });
+  });
+
+  app.get('/api/demo-store/product', (_req, res) => {
+    return res.set('Cache-Control', 'no-store').json(demoProduct);
   });
 
   app.get('/api/readiness', async (_req, res) => {
@@ -110,6 +115,9 @@ export function createApp({
           merchant: true,
           captures: true,
           evidenceCase: true,
+          evidenceEvents: {
+            orderBy: [{ occurredAt: 'asc' }, { recordedAt: 'asc' }],
+          },
         },
       });
       if (!order) {
@@ -120,6 +128,97 @@ export function createApp({
       return res.status(500).json({
         error: error instanceof Error ? error.message : 'Failed to query order',
       });
+    }
+  });
+
+  app.post('/api/agent-cases', async (_req, res) => {
+    if (!database)
+      return res.status(503).json({ error: 'Database is not connected' });
+    try {
+      let merchant = await database.merchant.findFirst();
+      if (!merchant) {
+        merchant = await database.merchant.create({
+          data: { name: 'ExhibitA Demo Merchant' },
+        });
+      }
+      const order = await database.$transaction(async (tx) => {
+        const created = await tx.order.create({
+          data: {
+            merchantId: merchant.id,
+            amountMinor: demoProduct.amountMinor,
+            currency: demoProduct.currency,
+            status: 'LOCAL_CREATED',
+            createRequestId: randomUUID(),
+            captureRequestId: randomUUID(),
+          },
+        });
+        await tx.evidenceCase.create({
+          data: {
+            orderId: created.id,
+            buyerInstruction: demoBuyerInstruction,
+            itemName: demoProduct.itemName,
+            shopName: demoProduct.shopName,
+            agentActionSource: null,
+            agentActionAt: null,
+            agentRunStatus: 'READY',
+          },
+        });
+        return created;
+      });
+      return res
+        .status(201)
+        .set('Cache-Control', 'no-store')
+        .json({ orderId: order.id });
+    } catch {
+      return res.status(500).json({ error: 'Could not create agent case' });
+    }
+  });
+
+  app.post('/api/agent-cases/:id/run', async (req, res) => {
+    if (!database)
+      return res.status(503).json({ error: 'Database is not connected' });
+    if (!paypalClient)
+      return res.status(503).json({ error: 'PayPal is not configured' });
+    if (!agentModel)
+      return res.status(503).json({
+        error: 'Groq agent is not configured. Add GROQ_API_KEY to local .env.',
+      });
+    const id = req.params.id;
+    try {
+      const claimed = await database.evidenceCase.updateMany({
+        where: { orderId: id, agentRunStatus: 'READY' },
+        data: { agentRunStatus: 'RUNNING' },
+      });
+      if (claimed.count !== 1)
+        return res
+          .status(409)
+          .json({ error: 'Agent case is not ready to run' });
+      try {
+        const order = await database.order.findUnique({ where: { id } });
+        if (!order) throw new Error('Saved order missing');
+        const result = await runJerseyAgent({
+          database,
+          paypalClient,
+          model: agentModel,
+          order,
+        });
+        await database.evidenceCase.update({
+          where: { orderId: id },
+          data: { agentRunStatus: 'CHECKOUT_READY' },
+        });
+        return res.set('Cache-Control', 'no-store').json(result);
+      } catch {
+        await database.evidenceCase.update({
+          where: { orderId: id },
+          data: { agentRunStatus: 'FAILED' },
+        });
+        return res.status(502).json({
+          error:
+            'Agent run did not complete. Review the saved case for recorded steps.',
+        });
+      }
+    } catch {
+      return res.status(500).json({ error: 'Could not start agent run' });
     }
   });
 

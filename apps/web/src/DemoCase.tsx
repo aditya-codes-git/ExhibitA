@@ -1,187 +1,185 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
 import {
-  ArrowLeft,
+  ArrowRight,
   CheckCircle2,
   ExternalLink,
   FileSearch,
-  Info,
-  Shirt,
+  Store,
 } from 'lucide-react';
 import {
+  createAgentCaseResponseSchema,
   createOrderResponseSchema,
   type CreateOrderResponse,
 } from '@exhibita/shared';
 
-const item = 'Real Madrid 2026 home jersey, player edition';
-const shop = 'Demo Sports Shop';
-const price = '$25';
-const instruction = `Buy the ${item}, for ${price} from ${shop}.`;
+const instruction =
+  'Buy the Real Madrid 2026 home jersey, player edition, for $25 from Demo Sports Shop.';
 
 export function DemoCase() {
-  const [creating, setCreating] = useState(false);
+  const [phase, setPhase] = useState<
+    'idle' | 'creating' | 'running' | 'ready' | 'failed'
+  >('idle');
+  const [caseId, setCaseId] = useState('');
+  const [checkout, setCheckout] = useState<CreateOrderResponse | null>(null);
   const [error, setError] = useState('');
-  const [created, setCreated] = useState<CreateOrderResponse | null>(null);
 
-  const startTest = async () => {
-    setCreating(true);
+  async function start() {
+    setPhase('creating');
+    setCaseId('');
+    setCheckout(null);
     setError('');
-    setCreated(null);
     try {
-      const response = await fetch('/api/orders', {
+      const createdResponse = await fetch('/api/agent-cases', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ demoCase: 'football_jersey_2026' }),
       });
-      const body = await response.json();
-      if (!response.ok) throw new Error(body.error || 'Could not start test');
-      setCreated(createOrderResponseSchema.parse(body));
+      const createdBody = await createdResponse.json();
+      if (!createdResponse.ok)
+        throw new Error(createdBody.error || 'Could not save the case.');
+      const created = createAgentCaseResponseSchema.parse(createdBody);
+      setCaseId(created.orderId);
+      setPhase('running');
+      const runResponse = await fetch(
+        `/api/agent-cases/${created.orderId}/run`,
+        { method: 'POST' },
+      );
+      const runBody = await runResponse.json();
+      if (!runResponse.ok)
+        throw new Error(runBody.error || 'The agent run did not complete.');
+      setCheckout(createOrderResponseSchema.parse(runBody));
+      setPhase('ready');
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not start test');
-    } finally {
-      setCreating(false);
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : 'The agent run did not complete.',
+      );
+      setPhase('failed');
     }
-  };
+  }
 
   return (
-    <main className="dashboard-content">
-      <Link
-        to="/"
-        className="inline-flex items-center gap-2 text-sm font-semibold text-blue-700 hover:underline"
-      >
-        <ArrowLeft size={16} /> Back to dashboard
-      </Link>
-
-      <div className="mt-8 max-w-3xl">
-        <span className="inline-flex items-center gap-2 rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-xs font-bold text-teal-900">
-          <Info size={14} /> Simulated example
-        </span>
-        <h1 className="mt-4 text-4xl font-bold tracking-tight text-slate-950 sm:text-5xl">
-          Football jersey purchase
-        </h1>
-        <p className="mt-3 text-base leading-relaxed text-slate-600">
-          A simple example of a buyer giving an AI agent exact purchase
-          instructions and the agent following them.
-        </p>
+    <main className="dashboard-content evidence-page">
+      <div className="evidence-breadcrumb">
+        <Link to="/">Workspace</Link>
+        <span>/</span> Guided demonstration
       </div>
-
-      <div className="mt-10 grid gap-5 lg:grid-cols-2">
-        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 font-bold text-blue-700">
-              1
-            </span>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Buyer instruction
-              </p>
-              <h2 className="text-lg font-bold text-slate-950">
-                What the buyer asked for
-              </h2>
-            </div>
-          </div>
-          <blockquote className="mt-6 rounded-xl border-l-4 border-blue-600 bg-blue-50 p-5 text-lg font-medium leading-relaxed text-slate-900">
-            {instruction}
-          </blockquote>
-          <p className="mt-4 text-sm text-slate-600">
-            The buyer specified the item, edition, price, and demo shop.
-          </p>
-        </section>
-
-        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 font-bold text-teal-800">
-              2
-            </span>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-teal-800">
-                Simulated example: agent action
-              </p>
-              <h2 className="text-lg font-bold text-slate-950">
-                What the agent did
-              </h2>
-            </div>
-          </div>
-          <div className="mt-6 flex items-start gap-4 rounded-xl bg-slate-50 p-5">
-            <Shirt size={24} className="mt-1 shrink-0 text-blue-700" />
-            <div>
-              <p className="font-bold text-slate-950">{item}</p>
-              <p className="mt-1 text-sm text-slate-600">{shop}</p>
-              <p className="mt-3 text-xl font-bold text-slate-950">{price}</p>
-            </div>
-          </div>
-          <p className="mt-4 text-sm text-slate-600">
-            The simulated checkout uses the buyer's exact selection. No real
-            order was placed for this example.
-          </p>
-        </section>
-      </div>
-
-      <section className="mt-5 flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-900">
-        <CheckCircle2 size={20} className="mt-0.5 shrink-0" />
+      <div className="evidence-page-heading">
         <div>
-          <h2 className="font-bold">Request and simulated action match</h2>
-          <p className="mt-1 text-sm">
-            Both show the same jersey, player edition, fictional shop, and $25
-            price. This is a demonstration, not verified agent activity or a
-            PayPal payment.
+          <p className="evidence-kicker">THE CONTROLLED JOURNEY</p>
+          <h1>Follow the evidence from request to payment.</h1>
+          <p>
+            One exact instruction. One fixed store product. A recorded agent
+            lookup and PayPal Sandbox checkout that you can inspect afterward.
           </p>
         </div>
-      </section>
+        <Link className="evidence-store-link" to="/demo-store">
+          <Store size={17} /> Visit Demo Sports Shop <ArrowRight size={16} />
+        </Link>
+      </div>
 
-      <section className="mt-5 rounded-2xl border border-blue-200 bg-blue-50 p-6">
-        <h2 className="text-lg font-bold text-slate-950">
-          Try this $25 request in PayPal Sandbox
-        </h2>
-        <p className="mt-2 text-sm text-slate-700">
-          ExhibitA will save the preset request and a clearly labeled simulated
-          action. You will approve a test payment as a Sandbox buyer; this does
-          not purchase a jersey from a real shop.
-        </p>
-        <button
-          type="button"
-          onClick={startTest}
-          disabled={creating}
-          className="mt-4 rounded-xl bg-blue-700 px-5 py-3 text-sm font-bold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {creating ? 'Creating Sandbox order…' : 'Start $25 Sandbox test'}
-        </button>
-        {error && (
-          <p role="alert" className="mt-3 text-sm font-medium text-rose-700">
-            {error}
+      <div className="evidence-guided-grid">
+        <section className="evidence-panel">
+          <span className="evidence-step">01 / DEMO-SUBMITTED REQUEST</span>
+          <h2>The buyer's exact instruction</h2>
+          <blockquote>“{instruction}”</blockquote>
+          <p>
+            The instruction is preset for this local demo. It does not
+            independently verify the buyer's identity.
           </p>
-        )}
-        {created && (
-          <div className="mt-4 rounded-xl border border-blue-200 bg-white p-4 text-sm">
-            <p className="font-semibold text-slate-900">Test order saved</p>
-            <p className="mt-1 font-mono text-xs text-slate-500">
-              Local order ID: {created.orderId}
-            </p>
-            <div className="mt-4 flex flex-wrap gap-3">
-              <a
-                href={created.approvalUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-lg bg-blue-700 px-4 py-2 font-semibold text-white hover:bg-blue-800"
-              >
-                Approve in PayPal Sandbox <ExternalLink size={15} />
-              </a>
-              <Link
-                to={`/cases/${created.orderId}`}
-                className="inline-flex items-center rounded-lg border border-slate-300 px-4 py-2 font-semibold text-blue-800 hover:bg-slate-50"
-              >
-                View saved case
-              </Link>
+        </section>
+        <section className="evidence-panel">
+          <span className="evidence-step">02 / CONTROLLED PRODUCT</span>
+          <h2>What the agent can inspect</h2>
+          <div className="evidence-mini-product">
+            <img
+              src="/demo-jersey.png"
+              alt="Illustrative unbranded white football jersey"
+            />
+            <div>
+              <strong>2026 home jersey</strong>
+              <span>Player edition · Demo Sports Shop</span>
+              <b>$25.00 USD</b>
             </div>
           </div>
-        )}
-      </section>
+          <p>
+            The agent reads the store's server product record. This is not a
+            claim that it browsed an external site.
+          </p>
+        </section>
+      </div>
 
-      <p className="mt-6 flex items-start gap-2 text-xs text-slate-500">
-        <FileSearch size={15} className="shrink-0" />
-        Viewing this example alone does not create an order. Sandbox test cases
-        appear with recent orders on the dashboard.
-      </p>
+      <section className="evidence-launch">
+        <div>
+          <span className="evidence-step">03 / RECORDED AGENT TEST</span>
+          <h2>Run the Sandbox journey</h2>
+          <p>
+            ExhibitA saves the case first, records actual model tool calls, then
+            prepares a $25 PayPal Sandbox checkout. Only a Sandbox buyer can
+            approve it.
+          </p>
+          <div className="evidence-launch-status" role="status">
+            {phase === 'creating' && 'Saving the demo case…'}
+            {phase === 'running' &&
+              'Agent is inspecting the product and preparing checkout…'}
+            {phase === 'ready' && (
+              <>
+                <CheckCircle2 size={17} /> Checkout ready. Buyer approval is
+                still required.
+              </>
+            )}
+            {phase === 'idle' && (
+              <>
+                <FileSearch size={17} /> No case has been created yet.
+              </>
+            )}
+            {phase === 'failed' &&
+              'Run incomplete. The saved case shows any recorded steps.'}
+          </div>
+          {error && (
+            <p className="evidence-error" role="alert">
+              {error}
+            </p>
+          )}
+          <div className="evidence-actions">
+            <button
+              className="evidence-primary"
+              type="button"
+              onClick={start}
+              disabled={phase === 'creating' || phase === 'running'}
+            >
+              {phase === 'creating' || phase === 'running'
+                ? 'Working…'
+                : phase === 'failed'
+                  ? 'Start a new case'
+                  : 'Run recorded agent Sandbox test'}{' '}
+              <ArrowRight size={17} />
+            </button>
+            {checkout && (
+              <a
+                className="evidence-secondary"
+                href={checkout.approvalUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Approve in PayPal Sandbox <ExternalLink size={16} />
+              </a>
+            )}
+            {caseId && (
+              <Link className="evidence-secondary" to={`/cases/${caseId}`}>
+                View saved case <ArrowRight size={16} />
+              </Link>
+            )}
+          </div>
+        </div>
+        <aside>
+          <strong>Sandbox boundaries</strong>
+          <p>
+            No live payment, real store sale, or jersey shipment occurs. A
+            prepared checkout is not a completed capture.
+          </p>
+        </aside>
+      </section>
     </main>
   );
 }

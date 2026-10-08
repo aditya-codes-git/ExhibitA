@@ -2,6 +2,7 @@ import { createApp } from './app.js';
 import { createDatabase } from './database.js';
 import { environment } from './environment.js';
 import { PayPalClient } from './paypal.js';
+import { GroqAgentModel } from './jersey-agent.js';
 
 const database = environment.databaseUrl
   ? createDatabase(environment.databaseUrl)
@@ -19,6 +20,12 @@ const app = createApp({
   config: environment,
   database,
   paypalClient,
+  agentModel: environment.groqApiKey
+    ? new GroqAgentModel(
+        environment.groqApiKey,
+        environment.groqModel ?? 'llama-3.3-70b-versatile',
+      )
+    : undefined,
   checkDatabase: database
     ? async () => {
         await database.$queryRaw`SELECT 1`;
