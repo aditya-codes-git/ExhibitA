@@ -1,4 +1,5 @@
 import { createApp } from './app.js';
+import { fileURLToPath } from 'node:url';
 import { createDatabase } from './database.js';
 import { environment } from './environment.js';
 import { PayPalClient } from './paypal.js';
@@ -31,6 +32,7 @@ const app = createApp({
         await database.$queryRaw`SELECT 1`;
       }
     : undefined,
+  webRoot: fileURLToPath(new URL('../../web/dist/', import.meta.url)),
 });
 
 const server = app.listen(environment.port, '0.0.0.0', () => {

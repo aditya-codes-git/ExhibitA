@@ -9,7 +9,6 @@ export type Config = {
   groqModel?: string;
   supabaseUrl?: string;
   supabaseAnonKey?: string;
-  frontendUrl?: string;
 };
 const optional = (schema: z.ZodType) =>
   z.preprocess(
@@ -36,7 +35,6 @@ const schema = z
     GROQ_MODEL: optional(z.string().trim().min(1)),
     SUPABASE_URL: optional(z.string().url()),
     SUPABASE_ANON_KEY: optional(z.string().trim().min(1)),
-    FRONTEND_URL: optional(z.string().url()),
   })
   .superRefine((value, ctx) => {
     if (
@@ -88,9 +86,6 @@ export function parseConfig(env: Record<string, string | undefined>): Config {
       : {}),
     ...(result.data.SUPABASE_ANON_KEY
       ? { supabaseAnonKey: String(result.data.SUPABASE_ANON_KEY) }
-      : {}),
-    ...(result.data.FRONTEND_URL
-      ? { frontendUrl: String(result.data.FRONTEND_URL).replace(/\/$/, '') }
       : {}),
   };
 }

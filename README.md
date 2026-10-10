@@ -28,9 +28,9 @@ In Supabase Auth URL Configuration, allow `http://127.0.0.1:5173/auth/callback` 
 
 ## Render deployment
 
-The root `render.yaml` defines a Render Blueprint with a Node API and a static frontend. Connect the pushed GitHub repository to Render as a Blueprint and enter the requested environment values. Use the Supabase session-pooler URI for `DATABASE_URL` (port 5432), the project's Supabase URL and publishable key, PayPal Sandbox credentials, and a Groq key. The service-role key is local provisioning only and must never be added to Render. Both services use the free plan in Singapore; the API applies pending Prisma migrations at startup.
+The root `render.yaml` defines a Render Blueprint for one Node web service that serves the API and the built frontend from the same origin. Connect the pushed GitHub repository to Render and enter the requested environment values. Use the Supabase session-pooler URI for `DATABASE_URL` (port 5432), the project's Supabase URL and publishable key, PayPal Sandbox credentials, and a Groq key. The service-role key is local provisioning only and must never be added to Render. The service uses the free plan in Singapore and applies pending Prisma migrations at startup.
 
-After Render creates the services, add the frontend URL and `/auth/callback` to Supabase Auth's redirect URL allowlist, and set the frontend site URL in Supabase Auth. Google sign-in also requires the Google OAuth provider to allow the Supabase callback URL. Use a strong password for the demo account before sharing the public app.
+After Render creates the service, add its HTTPS URL and `/auth/callback` to Supabase Auth's redirect URL allowlist, and set the site URL in Supabase Auth. Google sign-in also requires the Google OAuth provider to allow the Supabase callback URL. Use a strong password for the demo account before sharing the public app.
 
 ## Checks
 

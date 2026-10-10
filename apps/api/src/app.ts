@@ -22,6 +22,7 @@ export function createApp({
   paypalClient,
   agentModel,
   verifyToken,
+  webRoot,
 }: {
   config: Config;
   checkDatabase?: () => Promise<void>;
@@ -29,22 +30,12 @@ export function createApp({
   paypalClient?: PayPalClient;
   agentModel?: AgentModel;
   verifyToken?: (token: string) => Promise<{ id: string } | null>;
+  webRoot?: string;
 }) {
   const app = express();
   app.disable('x-powered-by');
   app.use(helmet());
   app.use(express.json());
-  app.use((req, res, next) => {
-    const origin = req.header('Origin');
-    if (origin && origin === config.frontendUrl) {
-      res.set('Access-Control-Allow-Origin', origin);
-      res.set('Access-Control-Allow-Headers', 'Authorization, Content-Type');
-      res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-      res.vary('Origin');
-    }
-    if (req.method === 'OPTIONS') return res.sendStatus(204);
-    next();
-  });
 
   app.get('/api/health', (_req, res) => {
     res
@@ -481,6 +472,14 @@ export function createApp({
       });
     }
   });
+
+  if (webRoot) {
+    app.use(express.static(webRoot));
+    app.use((req, res, next) => {
+      if (req.method !== 'GET' || req.path.startsWith('/api/')) return next();
+      return res.sendFile('index.html', { root: webRoot });
+    });
+  }
 
   app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
   return app;
