@@ -63,8 +63,8 @@ export type EvidenceCaseItem = z.infer<typeof evidenceCaseSchema>;
 export const evidenceEventSchema = z.object({
   id: z.string().uuid(),
   orderId: z.string().uuid(),
-  source: z.enum(['AGENT_MODEL', 'DEMO_STORE', 'EXHIBITA_TOOL']),
-  kind: z.enum(['TOOL_REQUEST', 'TOOL_RESULT']),
+  source: z.enum(['AGENT_MODEL', 'DEMO_STORE', 'EXHIBITA_TOOL', 'PAYPAL']),
+  kind: z.enum(['TOOL_REQUEST', 'TOOL_RESULT', 'PAYPAL_WEBHOOK']),
   externalEventId: z.string(),
   occurredAt: z.string(),
   recordedAt: z.string(),

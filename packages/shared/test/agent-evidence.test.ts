@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { evidenceEventSchema, orderItemSchema } from '../src/index.js';
 
 describe('agent evidence contracts', () => {
-  it('accepts a source-labeled event but rejects unsupported sources', () => {
+  it('accepts agent and PayPal events but rejects unsupported sources', () => {
     const event = {
       id: '6e283cfa-35b4-4aed-9ac9-d00d3ab3d194',
       orderId: 'd73ffbba-2105-4f29-9e85-de71b40df79e',
@@ -15,7 +15,15 @@ describe('agent evidence contracts', () => {
     };
     expect(evidenceEventSchema.parse(event).externalEventId).toBe('lookup-1');
     expect(
-      evidenceEventSchema.safeParse({ ...event, source: 'PAYPAL' }).success,
+      evidenceEventSchema.parse({
+        ...event,
+        source: 'PAYPAL',
+        kind: 'PAYPAL_WEBHOOK',
+        payload: { eventType: 'PAYMENT.CAPTURE.COMPLETED' },
+      }).source,
+    ).toBe('PAYPAL');
+    expect(
+      evidenceEventSchema.safeParse({ ...event, source: 'OTHER' }).success,
     ).toBe(false);
   });
 

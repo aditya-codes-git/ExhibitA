@@ -38,6 +38,11 @@ function eventFacts(event: EvidenceEventItem) {
       ? `PayPal Sandbox order ${event.payload.paypalOrderId} · ${typeof event.payload.amountMinor === 'number' ? money(event.payload.amountMinor) : 'amount missing'} ${event.payload.currency === 'USD' ? 'USD' : 'currency unverified'} · buyer approval still required`
       : 'Checkout result is missing an order reference.';
   }
+  if (event.source === 'PAYPAL') {
+    return typeof event.payload.eventType === 'string'
+      ? `${event.payload.eventType} · PayPal resource ${String(event.payload.resourceId ?? 'unknown')}`
+      : 'PayPal webhook event';
+  }
   const args = event.payload.arguments;
   if (typeof args !== 'object' || !args) return 'Tool arguments were invalid.';
   const values = args as Record<string, unknown>;
@@ -257,6 +262,8 @@ export function SavedCase() {
                           ? 'Product record returned'
                           : event.source === 'EXHIBITA_TOOL'
                             ? 'PayPal order recorded'
+                            : event.source === 'PAYPAL'
+                              ? 'PayPal webhook received'
                             : 'Invalid tool request'}
                   </strong>
                   <p className="evidence-event-facts">{eventFacts(event)}</p>
