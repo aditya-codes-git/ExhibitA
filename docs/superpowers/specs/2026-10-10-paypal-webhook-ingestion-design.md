@@ -24,7 +24,7 @@ For a matched event, store its ID, type, resource type and ID, PayPal order ID, 
 
 ## Persistence
 
-Add a `PayPalWebhookEvent` model in `exhibita` with a globally unique PayPal event ID, the normalized event metadata above, nullable local order relation, and a minimized JSON payload. Extend the existing evidence source/kind constraints to permit `PAYPAL` and `PAYPAL_WEBHOOK`, and add a unique constraint for the corresponding timeline event so receipts and evidence are idempotent together. Add the relation on `Order` for Prisma consistency, but keep public API output limited to existing order/evidence fields unless needed for a test.
+Add a `PayPalWebhookEvent` model in `exhibita` with a globally unique PayPal event ID, the normalized event metadata above, nullable local order relation, and a minimized JSON payload. Extend the existing evidence source/kind constraints to permit `PAYPAL` and `PAYPAL_WEBHOOK`; use the existing `(orderId, source, externalEventId)` uniqueness for matched timeline entries. Add the relation on `Order` for Prisma consistency, but keep public API output limited to existing order/evidence fields unless needed for a test.
 
 The migration must enable RLS and revoke direct `PUBLIC`, `anon`, and `authenticated` access, matching the existing private-schema tables. The API's database role remains the only runtime path.
 
