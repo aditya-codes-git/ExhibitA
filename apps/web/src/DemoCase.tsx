@@ -12,6 +12,7 @@ import {
   createOrderResponseSchema,
   type CreateOrderResponse,
 } from '@exhibita/shared';
+import { apiFetch } from './api';
 
 const instruction =
   'Buy the Real Madrid 2026 home jersey, player edition, for $25 from Demo Sports Shop.';
@@ -30,7 +31,7 @@ export function DemoCase() {
     setCheckout(null);
     setError('');
     try {
-      const createdResponse = await fetch('/api/agent-cases', {
+      const createdResponse = await apiFetch('/api/agent-cases', {
         method: 'POST',
       });
       const createdBody = await createdResponse.json();
@@ -39,7 +40,7 @@ export function DemoCase() {
       const created = createAgentCaseResponseSchema.parse(createdBody);
       setCaseId(created.orderId);
       setPhase('running');
-      const runResponse = await fetch(
+      const runResponse = await apiFetch(
         `/api/agent-cases/${created.orderId}/run`,
         { method: 'POST' },
       );

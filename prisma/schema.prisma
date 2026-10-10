@@ -12,6 +12,7 @@ datasource db {
 model Merchant {
   id        String   @id @default(uuid()) @db.Uuid
   name      String   @db.VarChar(200)
+  authUserId String? @unique @db.Uuid
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   orders    Order[]
 

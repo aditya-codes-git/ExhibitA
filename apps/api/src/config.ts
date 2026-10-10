@@ -7,6 +7,9 @@ export type Config = {
   paypalClientSecret?: string;
   groqApiKey?: string;
   groqModel?: string;
+  supabaseUrl?: string;
+  supabaseAnonKey?: string;
+  frontendUrl?: string;
 };
 const optional = (schema: z.ZodType) =>
   z.preprocess(
@@ -31,6 +34,9 @@ const schema = z
     PAYPAL_CLIENT_SECRET: optional(z.string().trim().min(1)),
     GROQ_API_KEY: optional(z.string().trim().min(1)),
     GROQ_MODEL: optional(z.string().trim().min(1)),
+    SUPABASE_URL: optional(z.string().url()),
+    SUPABASE_ANON_KEY: optional(z.string().trim().min(1)),
+    FRONTEND_URL: optional(z.string().url()),
   })
   .superRefine((value, ctx) => {
     if (
@@ -42,6 +48,13 @@ const schema = z
           value.PAYPAL_CLIENT_ID ? 'PAYPAL_CLIENT_SECRET' : 'PAYPAL_CLIENT_ID',
         ],
         message: 'Both PayPal credentials are required',
+      });
+    }
+    if (Boolean(value.SUPABASE_URL) !== Boolean(value.SUPABASE_ANON_KEY)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: [value.SUPABASE_URL ? 'SUPABASE_ANON_KEY' : 'SUPABASE_URL'],
+        message: 'Both Supabase Auth settings are required',
       });
     }
   });
@@ -69,6 +82,15 @@ export function parseConfig(env: Record<string, string | undefined>): Config {
       : {}),
     ...(result.data.GROQ_MODEL
       ? { groqModel: String(result.data.GROQ_MODEL) }
+      : {}),
+    ...(result.data.SUPABASE_URL
+      ? { supabaseUrl: String(result.data.SUPABASE_URL) }
+      : {}),
+    ...(result.data.SUPABASE_ANON_KEY
+      ? { supabaseAnonKey: String(result.data.SUPABASE_ANON_KEY) }
+      : {}),
+    ...(result.data.FRONTEND_URL
+      ? { frontendUrl: String(result.data.FRONTEND_URL).replace(/\/$/, '') }
       : {}),
   };
 }

@@ -31,6 +31,9 @@ import {
 import { DemoCase } from './DemoCase';
 import { SavedCase } from './SavedCase';
 import { DemoStore } from './DemoStore';
+import { AuthProvider, RequireAuth, SignOutButton } from './auth';
+import { AuthCallback, Login } from './Login';
+import { apiFetch } from './api';
 import './style.css';
 
 type OrderWithCaptures = {
@@ -135,7 +138,7 @@ function Dashboard() {
     const controller = new AbortController();
     setIsChecking(true);
     setReadinessError('');
-    fetch('/api/readiness', { signal: controller.signal })
+    apiFetch('/api/readiness', { signal: controller.signal })
       .then(async (res) => {
         if (!res.ok && res.status !== 503) {
           throw new Error('Readiness check failed');
@@ -161,7 +164,7 @@ function Dashboard() {
   const refreshOrders = () => {
     setLoadingOrders(true);
     setOrdersError('');
-    fetch('/api/orders')
+    apiFetch('/api/orders')
       .then(async (res) => {
         if (!res.ok) throw new Error('Orders could not be loaded.');
         return (await res.json()) as OrderWithCaptures[];
@@ -209,7 +212,7 @@ function Dashboard() {
     }
 
     try {
-      const res = await fetch('/api/orders', {
+      const res = await apiFetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -638,7 +641,7 @@ function ReturnPage() {
     }
 
     const controller = new AbortController();
-    fetch(`/api/orders/${orderId}/capture`, {
+    apiFetch(`/api/orders/${orderId}/capture`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       signal: controller.signal,
@@ -914,6 +917,7 @@ function WorkspaceApp() {
             <span aria-hidden="true" />
             Sandbox
           </span>
+          <SignOutButton />
         </header>
         <WorkspaceNav mobile />
         <WorkspaceStrip />
@@ -943,10 +947,21 @@ function WorkspaceApp() {
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/demo-store" element={<DemoStore />} />
-        <Route path="*" element={<WorkspaceApp />} />
-      </Routes>
+      <AuthProvider>
+        <Routes>
+          <Route path="/demo-store" element={<DemoStore />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route
+            path="*"
+            element={
+              <RequireAuth>
+                <WorkspaceApp />
+              </RequireAuth>
+            }
+          />
+        </Routes>
+      </AuthProvider>
     </BrowserRouter>
   );
 }

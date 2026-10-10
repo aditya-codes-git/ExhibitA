@@ -8,6 +8,7 @@ import type { PrismaClient } from './generated/prisma/client.js';
 import { PayPalClient, extractCaptureDetails } from './paypal.js';
 import { demoBuyerInstruction, demoProduct } from './demo-store.js';
 import { runJerseyAgent, type AgentModel } from './jersey-agent.js';
+import { verifyAccessToken } from './auth.js';
 
 const jerseyDemo = {
   ...demoProduct,
@@ -20,17 +21,30 @@ export function createApp({
   database,
   paypalClient,
   agentModel,
+  verifyToken,
 }: {
   config: Config;
   checkDatabase?: () => Promise<void>;
   database?: PrismaClient;
   paypalClient?: PayPalClient;
   agentModel?: AgentModel;
+  verifyToken?: (token: string) => Promise<{ id: string } | null>;
 }) {
   const app = express();
   app.disable('x-powered-by');
   app.use(helmet());
   app.use(express.json());
+  app.use((req, res, next) => {
+    const origin = req.header('Origin');
+    if (origin && origin === config.frontendUrl) {
+      res.set('Access-Control-Allow-Origin', origin);
+      res.set('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+      res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      res.vary('Origin');
+    }
+    if (req.method === 'OPTIONS') return res.sendStatus(204);
+    next();
+  });
 
   app.get('/api/health', (_req, res) => {
     res
@@ -41,6 +55,34 @@ export function createApp({
   app.get('/api/demo-store/product', (_req, res) => {
     return res.set('Cache-Control', 'no-store').json(demoProduct);
   });
+
+  app.use('/api', async (req, res, next) => {
+    const match = /^Bearer ([^\s]+)$/.exec(req.header('Authorization') ?? '');
+    if (!match)
+      return res.status(401).json({ error: 'Authentication required' });
+    if (!verifyToken && (!config.supabaseUrl || !config.supabaseAnonKey)) {
+      return res
+        .status(503)
+        .json({ error: 'Authentication is not configured' });
+    }
+    try {
+      const user = await (
+        verifyToken ?? ((token) => verifyAccessToken(token, config))
+      )(match[1]!);
+      if (!user) return res.status(401).json({ error: 'Invalid session' });
+      res.locals.userId = user.id;
+      next();
+    } catch {
+      return res.status(503).json({ error: 'Authentication is unavailable' });
+    }
+  });
+
+  const merchantForUser = (userId: string) =>
+    database!.merchant.upsert({
+      where: { authUserId: userId },
+      create: { name: 'ExhibitA Merchant', authUserId: userId },
+      update: {},
+    });
 
   app.get('/api/readiness', async (_req, res) => {
     let databaseStatus: Readiness['database'] = 'not_configured';
@@ -87,6 +129,7 @@ export function createApp({
     }
     try {
       const orders = await database.order.findMany({
+        where: { merchant: { authUserId: res.locals.userId } },
         include: {
           merchant: true,
           captures: true,
@@ -109,8 +152,11 @@ export function createApp({
       return res.status(503).json({ error: 'Database is not connected' });
     }
     try {
-      const order = await database.order.findUnique({
-        where: { id: req.params.id },
+      const order = await database.order.findFirst({
+        where: {
+          id: req.params.id,
+          merchant: { authUserId: res.locals.userId },
+        },
         include: {
           merchant: true,
           captures: true,
@@ -135,12 +181,7 @@ export function createApp({
     if (!database)
       return res.status(503).json({ error: 'Database is not connected' });
     try {
-      let merchant = await database.merchant.findFirst();
-      if (!merchant) {
-        merchant = await database.merchant.create({
-          data: { name: 'ExhibitA Demo Merchant' },
-        });
-      }
+      const merchant = await merchantForUser(res.locals.userId);
       const order = await database.$transaction(async (tx) => {
         const created = await tx.order.create({
           data: {
@@ -177,16 +218,29 @@ export function createApp({
   app.post('/api/agent-cases/:id/run', async (req, res) => {
     if (!database)
       return res.status(503).json({ error: 'Database is not connected' });
+    const id = req.params.id;
+    let order: Awaited<ReturnType<typeof database.order.findFirst>>;
+    try {
+      order = await database.order.findFirst({
+        where: { id, merchant: { authUserId: res.locals.userId } },
+      });
+    } catch {
+      return res.status(500).json({ error: 'Could not load agent case' });
+    }
+    if (!order) return res.status(404).json({ error: 'Order not found' });
     if (!paypalClient)
       return res.status(503).json({ error: 'PayPal is not configured' });
     if (!agentModel)
       return res.status(503).json({
         error: 'Groq agent is not configured. Add GROQ_API_KEY to local .env.',
       });
-    const id = req.params.id;
     try {
       const claimed = await database.evidenceCase.updateMany({
-        where: { orderId: id, agentRunStatus: 'READY' },
+        where: {
+          orderId: id,
+          order: { merchant: { authUserId: res.locals.userId } },
+          agentRunStatus: 'READY',
+        },
         data: { agentRunStatus: 'RUNNING' },
       });
       if (claimed.count !== 1)
@@ -194,8 +248,6 @@ export function createApp({
           .status(409)
           .json({ error: 'Agent case is not ready to run' });
       try {
-        const order = await database.order.findUnique({ where: { id } });
-        if (!order) throw new Error('Saved order missing');
         const result = await runJerseyAgent({
           database,
           paypalClient,
@@ -247,14 +299,7 @@ export function createApp({
     const itemName = isJerseyDemo ? jerseyDemo.itemName : parsed.data.itemName;
 
     try {
-      let merchant = await database.merchant.findFirst();
-      if (!merchant) {
-        merchant = await database.merchant.create({
-          data: {
-            name: 'ExhibitA Demo Merchant',
-          },
-        });
-      }
+      const merchant = await merchantForUser(res.locals.userId);
 
       const createRequestId = randomUUID();
       const captureRequestId = randomUUID();
@@ -345,8 +390,8 @@ export function createApp({
     const { id } = req.params;
 
     try {
-      const order = await database.order.findUnique({
-        where: { id },
+      const order = await database.order.findFirst({
+        where: { id, merchant: { authUserId: res.locals.userId } },
         include: { merchant: true, captures: true },
       });
       if (!order) {
@@ -383,8 +428,8 @@ export function createApp({
         if (existingCapture.orderId !== order.id) {
           throw new Error('PayPal capture belongs to a different order');
         }
-        const committedOrder = await database.order.findUnique({
-          where: { id: order.id },
+        const committedOrder = await database.order.findFirst({
+          where: { id: order.id, merchant: { authUserId: res.locals.userId } },
           include: { merchant: true, captures: true },
         });
         if (!committedOrder) throw new Error('Captured order not found');

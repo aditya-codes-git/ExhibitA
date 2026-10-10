@@ -21,7 +21,8 @@
     "db:generate": "prisma generate",
     "db:validate": "prisma validate",
     "db:deploy": "prisma migrate deploy",
-    "paypal:probe": "tsx apps/api/src/paypal-probe.ts"
+    "paypal:probe": "tsx apps/api/src/paypal-probe.ts",
+    "auth:provision-demo": "tsx apps/api/src/provision-demo-user.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.0",

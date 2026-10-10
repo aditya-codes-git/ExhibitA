@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import request from 'supertest';
-import { createApp } from '../src/app.js';
+import request, { createApp } from './test-auth.js';
 import type { PrismaClient } from '../src/generated/prisma/client.js';
 import type { PayPalClient } from '../src/paypal.js';
 import type { AgentModel } from '../src/jersey-agent.js';
@@ -15,7 +14,7 @@ describe('recorded agent case', () => {
       evidenceCase: { create: vi.fn() },
     };
     const database = {
-      merchant: { findFirst: vi.fn().mockResolvedValue({ id: 'merchant' }) },
+      merchant: { upsert: vi.fn().mockResolvedValue({ id: 'merchant' }) },
       $transaction: vi.fn(async (run) => run(tx)),
     } as unknown as PrismaClient;
     const response = await request(
@@ -46,7 +45,7 @@ describe('recorded agent case', () => {
   it('returns the saved events in occurrence order', async () => {
     const database = {
       order: {
-        findUnique: vi.fn().mockResolvedValue({
+        findFirst: vi.fn().mockResolvedValue({
           id: orderId,
           captures: [],
           evidenceCase: null,
@@ -58,8 +57,11 @@ describe('recorded agent case', () => {
       createApp({ config: { port: 3001 }, database }),
     ).get(`/api/orders/${orderId}`);
     expect(response.status).toBe(200);
-    expect(database.order.findUnique).toHaveBeenCalledWith({
-      where: { id: orderId },
+    expect(database.order.findFirst).toHaveBeenCalledWith({
+      where: {
+        id: orderId,
+        merchant: { authUserId: '00000000-0000-4000-8000-000000000001' },
+      },
       include: expect.objectContaining({
         evidenceEvents: {
           orderBy: [{ occurredAt: 'asc' }, { recordedAt: 'asc' }],
@@ -79,7 +81,7 @@ describe('recorded agent case', () => {
       },
       evidenceEvent: { create: vi.fn().mockResolvedValue({}) },
       order: {
-        findUnique: vi.fn().mockResolvedValue({
+        findFirst: vi.fn().mockResolvedValue({
           id: orderId,
           amountMinor: 2500,
           currency: 'USD',
@@ -146,6 +148,7 @@ describe('recorded agent case', () => {
   it('keeps a missing Groq configuration from claiming the case', async () => {
     const database = {
       evidenceCase: { updateMany: vi.fn() },
+      order: { findFirst: vi.fn().mockResolvedValue({ id: orderId }) },
     } as unknown as PrismaClient;
     const paypalClient = {} as PayPalClient;
     const response = await request(
@@ -162,7 +165,7 @@ describe('recorded agent case', () => {
         update: vi.fn().mockResolvedValue({}),
       },
       order: {
-        findUnique: vi.fn().mockResolvedValue({
+        findFirst: vi.fn().mockResolvedValue({
           id: orderId,
           amountMinor: 2500,
           currency: 'USD',

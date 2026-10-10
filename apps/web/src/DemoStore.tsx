@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, Check, ShieldCheck } from 'lucide-react';
 import { Link } from 'react-router';
 import { demoProductSchema, type DemoProduct } from '@exhibita/shared';
+import { apiUrl } from './api';
 
 export function DemoStore() {
   const [product, setProduct] = useState<DemoProduct | null>(null);
@@ -10,7 +11,7 @@ export function DemoStore() {
   useEffect(() => {
     const controller = new AbortController();
     document.title = 'Home Jersey · Demo Sports Shop';
-    fetch('/api/demo-store/product', { signal: controller.signal })
+    fetch(apiUrl('/api/demo-store/product'), { signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) throw new Error('Product details are unavailable.');
         return demoProductSchema.parse(await response.json());

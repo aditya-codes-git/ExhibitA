@@ -33,8 +33,8 @@ const app = createApp({
     : undefined,
 });
 
-const server = app.listen(environment.port, '127.0.0.1', () => {
-  console.log(`ExhibitA API listening on http://127.0.0.1:${environment.port}`);
+const server = app.listen(environment.port, '0.0.0.0', () => {
+  console.log(`ExhibitA API listening on port ${environment.port}`);
 });
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
-import request from 'supertest';
+import request from './test-auth.js';
 import { parseConfig } from '../src/config.js';
-import { createApp } from '../src/app.js';
+import { createApp } from './test-auth.js';
 import type { PayPalClient } from '../src/paypal.js';
 
 describe('configuration', () => {
@@ -17,6 +17,11 @@ describe('configuration', () => {
   });
   it('allows a foundation startup without integration credentials', () => {
     expect(parseConfig({})).toEqual({ port: 3001 });
+  });
+  it('normalizes the configured frontend origin', () => {
+    expect(
+      parseConfig({ FRONTEND_URL: 'https://exhibita-web.onrender.com/' }),
+    ).toEqual({ port: 3001, frontendUrl: 'https://exhibita-web.onrender.com' });
   });
   it('rejects partial PayPal credentials without exposing the supplied secret', () => {
     expect(() =>
@@ -146,5 +151,30 @@ describe('health', () => {
       paymentFlow: 'not_implemented',
     });
     expect(response.text).not.toContain('private-test-value');
+  });
+});
+
+describe('deployment CORS', () => {
+  it('allows browser API requests only from the configured frontend', async () => {
+    const app = createApp({
+      config: { port: 3001, frontendUrl: 'https://exhibita-web.onrender.com' },
+    });
+    const allowed = await request(app)
+      .options('/api/orders')
+      .set('Origin', 'https://exhibita-web.onrender.com')
+      .set('Access-Control-Request-Method', 'GET')
+      .set('Access-Control-Request-Headers', 'authorization');
+    expect(allowed.status).toBe(204);
+    expect(allowed.headers['access-control-allow-origin']).toBe(
+      'https://exhibita-web.onrender.com',
+    );
+    expect(allowed.headers['access-control-allow-headers']).toContain(
+      'Authorization',
+    );
+
+    const denied = await request(app)
+      .options('/api/orders')
+      .set('Origin', 'https://other.example');
+    expect(denied.headers['access-control-allow-origin']).toBeUndefined();
   });
 });

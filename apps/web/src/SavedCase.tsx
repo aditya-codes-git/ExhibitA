@@ -14,6 +14,7 @@ import {
   type EvidenceEventItem,
   type OrderItem,
 } from '@exhibita/shared';
+import { apiFetch } from './api';
 
 const money = (minor: number) =>
   new Intl.NumberFormat('en-US', {
@@ -59,7 +60,7 @@ export function SavedCase() {
     }
     const controller = new AbortController();
     setLoading(true);
-    fetch(`/api/orders/${encodeURIComponent(orderId)}`, {
+    apiFetch(`/api/orders/${encodeURIComponent(orderId)}`, {
       signal: controller.signal,
     })
       .then(async (response) => {

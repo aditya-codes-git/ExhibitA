@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import request from 'supertest';
-import { createApp } from '../src/app.js';
+import request, { createApp } from './test-auth.js';
 import { extractCaptureDetails } from '../src/paypal.js';
 import type { PrismaClient } from '../src/generated/prisma/client.js';
 import type { PayPalClient } from '../src/paypal.js';
@@ -132,7 +131,7 @@ describe('order flow endpoints (mocked db and paypal)', () => {
 
     const mockDb = {
       merchant: {
-        findFirst: vi.fn().mockResolvedValue({
+        upsert: vi.fn().mockResolvedValue({
           id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
           name: 'ExhibitA Demo Merchant',
         }),
@@ -251,7 +250,7 @@ describe('order flow endpoints (mocked db and paypal)', () => {
 
     const mockDb = {
       order: {
-        findUnique: vi.fn().mockResolvedValue(existingOrder),
+        findFirst: vi.fn().mockResolvedValue(existingOrder),
       },
       capture: {
         findUnique: vi.fn().mockResolvedValue(null),
@@ -302,7 +301,7 @@ describe('order flow endpoints (mocked db and paypal)', () => {
     const transaction = vi.fn();
     const database = {
       order: {
-        findUnique: vi.fn().mockResolvedValue({
+        findFirst: vi.fn().mockResolvedValue({
           id: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
           amountMinor: 2500,
           paypalOrderId: 'PP_ORDER_999',
@@ -360,7 +359,7 @@ describe('order flow endpoints (mocked db and paypal)', () => {
 
     const mockDb = {
       order: {
-        findUnique: vi.fn().mockResolvedValue(capturedOrder),
+        findFirst: vi.fn().mockResolvedValue(capturedOrder),
       },
     } as unknown as PrismaClient;
 
@@ -407,7 +406,7 @@ describe('order flow endpoints (mocked db and paypal)', () => {
     };
     const database = {
       order: {
-        findUnique: vi
+        findFirst: vi
           .fn()
           .mockResolvedValueOnce(staleOrder)
           .mockResolvedValueOnce({
@@ -465,10 +464,10 @@ describe('fixed jersey evidence case', () => {
       },
     };
     const database = {
-      merchant: { findFirst: vi.fn().mockResolvedValue({ id: 'merchant-id' }) },
+      merchant: { upsert: vi.fn().mockResolvedValue({ id: 'merchant-id' }) },
       $transaction: vi.fn(async (callback) => callback(tx)),
       order: {
-        findUnique: vi.fn(async ({ include }) => ({
+        findFirst: vi.fn(async ({ include }) => ({
           ...order,
           captures: [],
           ...(include.evidenceCase
@@ -546,7 +545,7 @@ describe('fixed jersey evidence case', () => {
     const { app, database } = setup();
     const response = await request(app).post('/api/orders').send(body);
     expect(response.status).toBe(400);
-    expect(database.merchant.findFirst).not.toHaveBeenCalled();
+    expect(database.merchant.upsert).not.toHaveBeenCalled();
     expect(database.$transaction).not.toHaveBeenCalled();
   });
 
@@ -568,7 +567,7 @@ describe('fixed jersey evidence case', () => {
     const many = await request(app).get('/api/orders');
     expect(one.body.evidenceCase).toBeNull();
     expect(many.body[0].evidenceCase).toBeNull();
-    expect(database.order.findUnique).toHaveBeenCalledWith(
+    expect(database.order.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
         include: expect.objectContaining({ evidenceCase: true }),
       }),

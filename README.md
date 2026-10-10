@@ -20,7 +20,17 @@ Open [the local setup screen](http://127.0.0.1:5173). API health is at [port 300
 
 The fictional [Demo Sports Shop](http://127.0.0.1:5173/demo-store) leads to the [guided case](http://127.0.0.1:5173/demo-case). Add `GROQ_API_KEY` to the server-side `.env` to run the recorded agent; `GROQ_MODEL` optionally overrides the default `qwen/qwen3.8-27b`. No OpenAI API key is used. The saved case appears before the agent runs; if Groq or PayPal fails, it remains incomplete and inspectable. A Sandbox buyer must approve checkout separately, and only a completed capture is displayed as a completed payment. The store is illustrative and does not sell or ship merchandise.
 
-The app starts without credentials and shows integrations as unconfigured. Configure secrets only in the root `.env`; never send them in chat or commit them. See [Supabase setup](docs/SUPABASE_SETUP.md) and [PayPal setup](docs/PAYPAL_SETUP.md).
+The app starts without credentials. Configure the root `.env`; never send passwords or service keys in chat or commit them. Set `SUPABASE_URL` and `VITE_SUPABASE_URL` to the dedicated project's API URL. Set `SUPABASE_ANON_KEY` and `VITE_SUPABASE_ANON_KEY` to its publishable key. Vite reads the root `.env`, and only `VITE_` values reach the browser. See [Supabase setup](docs/SUPABASE_SETUP.md) and [PayPal setup](docs/PAYPAL_SETUP.md).
+
+The merchant workspace now requires Supabase Auth. The login page supports email/password and Google; the fictional store remains public. For the existing demo records, add a unique test password as `DEMO_USER_PASSWORD` and a Supabase service-role key as `SUPABASE_SERVICE_ROLE_KEY` to the **local root** `.env`, then run `npm run db:deploy` and `npm run auth:provision-demo`. The command links the single existing merchant to the confirmed `DEMO_USER_EMAIL` account. Run it only against the dedicated ExhibitA project. It refuses zero/multiple merchants or an owner conflict and never resets an existing Auth user's password. Remove the service-role key from any deployed environment; it is needed only for this local command.
+
+In Supabase Auth URL Configuration, allow `http://127.0.0.1:5173/auth/callback` for local Google sign-in and add the final HTTPS callback URL after deployment. Google sign-in requires the provider configuration in Supabase and Google Cloud. Each newly signed-in Google user gets a separate empty merchant workspace.
+
+## Render deployment
+
+The root `render.yaml` defines a Render Blueprint with a Node API and a static frontend. Connect the pushed GitHub repository to Render as a Blueprint and enter the requested environment values. Use the Supabase session-pooler URI for `DATABASE_URL` (port 5432), the project's Supabase URL and publishable key, PayPal Sandbox credentials, and a Groq key. The service-role key is local provisioning only and must never be added to Render. Both services use the free plan in Singapore; the API applies pending Prisma migrations at startup.
+
+After Render creates the services, add the frontend URL and `/auth/callback` to Supabase Auth's redirect URL allowlist, and set the frontend site URL in Supabase Auth. Google sign-in also requires the Google OAuth provider to allow the Supabase callback URL. Use a strong password for the demo account before sharing the public app.
 
 ## Checks
 
