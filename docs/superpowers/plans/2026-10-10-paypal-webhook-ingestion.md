@@ -93,7 +93,7 @@
 - [x] **Step 1: Run full checks** with `npm test`, `npm run lint`, `npm run typecheck`, `npm run db:validate`, and `npm run build`; expect all tests, static checks, and production builds to pass.
 - [x] **Step 2: Push the approved implementation to `main`** and monitor Render's automatic deployment; confirm the additive migration applies and `/api/health` remains 200. The push did not trigger the configured auto-deploy, so a manual deployment was started after confirming no deployment had begun.
 - [x] **Step 3: Verify the deployed listener** fails closed with 503 while `PAYPAL_WEBHOOK_ID` is unset and does not write on invalid requests.
-- [ ] **Step 4: Hand off registration**: user adds `https://exhibita.onrender.com/api/paypal/webhook` to the PayPal Sandbox app, selects the five documented events, and provides the generated non-secret webhook ID. Set only that ID in Render and redeploy.
+- [x] **Step 4: Hand off registration**: user adds `https://exhibita.onrender.com/api/paypal/webhook` to the PayPal Sandbox app, selects the five documented events, and provides the generated non-secret webhook ID. Set only that ID in Render and redeploy. Completed; the Render deployment is live and the endpoint now rejects unsigned requests with 400 instead of returning the disabled 503.
 - [ ] **Step 5: Verify an actual Sandbox event** after the webhook is registered: return 2xx to PayPal, confirm one durable receipt, and for a matched order confirm one `PAYPAL` timeline event; replay the same event and confirm counts do not change.
 
 ## Self-review
