@@ -5,6 +5,7 @@ export type Config = {
   databaseUrl?: string;
   paypalClientId?: string;
   paypalClientSecret?: string;
+  paypalWebhookId?: string;
   groqApiKey?: string;
   groqModel?: string;
   supabaseUrl?: string;
@@ -31,6 +32,7 @@ const schema = z
     ),
     PAYPAL_CLIENT_ID: optional(z.string().trim().min(1)),
     PAYPAL_CLIENT_SECRET: optional(z.string().trim().min(1)),
+    PAYPAL_WEBHOOK_ID: optional(z.string().trim().min(1)),
     GROQ_API_KEY: optional(z.string().trim().min(1)),
     GROQ_MODEL: optional(z.string().trim().min(1)),
     SUPABASE_URL: optional(z.string().url()),
@@ -74,6 +76,9 @@ export function parseConfig(env: Record<string, string | undefined>): Config {
       : {}),
     ...(result.data.PAYPAL_CLIENT_SECRET
       ? { paypalClientSecret: String(result.data.PAYPAL_CLIENT_SECRET) }
+      : {}),
+    ...(result.data.PAYPAL_WEBHOOK_ID
+      ? { paypalWebhookId: String(result.data.PAYPAL_WEBHOOK_ID) }
       : {}),
     ...(result.data.GROQ_API_KEY
       ? { groqApiKey: String(result.data.GROQ_API_KEY) }

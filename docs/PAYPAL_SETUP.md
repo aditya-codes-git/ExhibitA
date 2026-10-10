@@ -26,6 +26,14 @@ The server-side adapter implements authentication, order creation, and capture t
 
 The initial transport supports USD only, with 1 to 1,000,000 minor units ($0.01 to $10,000.00). This is a demo restriction, not a currency conversion feature.
 
-Webhook ingestion is not implemented. Add a reachable HTTPS endpoint, signature verification, and duplicate protection before subscribing. `PAYPAL_WEBHOOK_ID` is reserved for that increment.
+## Sandbox webhook evidence
+
+After deploying the receiver, add this URL to the same PayPal Sandbox app:
+
+```text
+https://exhibita.onrender.com/api/paypal/webhook
+```
+
+Subscribe only to `CHECKOUT.ORDER.APPROVED`, `PAYMENT.CAPTURE.COMPLETED`, `PAYMENT.CAPTURE.PENDING`, `PAYMENT.CAPTURE.DENIED`, and `PAYMENT.CAPTURE.REFUNDED`. Copy the generated webhook ID into `PAYPAL_WEBHOOK_ID` in Render and redeploy. The endpoint stays unavailable until that ID and the database are configured. It verifies Sandbox signatures, stores minimized event receipts, and links known orders into the evidence timeline; it does not change order or capture status. Do not use a Live app or credentials.
 
 References: [Authentication](https://developer.paypal.com/api/rest/authentication/), [Create order](https://developer.paypal.com/api/orders/v2/orders-create), [Capture order](https://developer.paypal.com/api/orders/v2/orders-capture), [Dispute Sandbox testing](https://developer.paypal.com/platforms/disputes/test-go-live/).

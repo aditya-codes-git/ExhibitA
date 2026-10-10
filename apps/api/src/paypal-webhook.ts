@@ -5,6 +5,7 @@ const certificateHosts = new Set([
   'api-m.sandbox.paypal.com',
 ]);
 const certificateTtlMs = 6 * 60 * 60 * 1000;
+const certificateCacheLimit = 32;
 const crcTable = Array.from({ length: 256 }, (_, value) => {
   let crc = value;
   for (let bit = 0; bit < 8; bit++)
@@ -96,6 +97,10 @@ export class PayPalWebhookVerifier {
       if (!response.ok) throw new Error('Certificate request failed');
       const pem = await response.text();
       if (!pem || pem.length > 64_000) throw new Error('Invalid certificate');
+      if (this.certificates.size >= certificateCacheLimit) {
+        const oldestUrl = this.certificates.keys().next().value;
+        if (oldestUrl) this.certificates.delete(oldestUrl);
+      }
       this.certificates.set(url, {
         pem,
         expiresAt: Date.now() + certificateTtlMs,

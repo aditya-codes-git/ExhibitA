@@ -18,6 +18,13 @@ describe('configuration', () => {
   it('allows a foundation startup without integration credentials', () => {
     expect(parseConfig({})).toEqual({ port: 3001 });
   });
+  it('keeps PayPal webhook configuration optional and trims its ID', () => {
+    expect(parseConfig({ PAYPAL_WEBHOOK_ID: '  WH-123  ' })).toEqual({
+      port: 3001,
+      paypalWebhookId: 'WH-123',
+    });
+    expect(parseConfig({ PAYPAL_WEBHOOK_ID: '' })).toEqual({ port: 3001 });
+  });
   it('rejects partial PayPal credentials without exposing the supplied secret', () => {
     expect(() =>
       parseConfig({ PAYPAL_CLIENT_SECRET: 'private-test-value' }),

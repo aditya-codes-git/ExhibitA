@@ -9,6 +9,11 @@ import { PayPalClient, extractCaptureDetails } from './paypal.js';
 import { demoBuyerInstruction, demoProduct } from './demo-store.js';
 import { runJerseyAgent, type AgentModel } from './jersey-agent.js';
 import { verifyAccessToken } from './auth.js';
+import type {
+  PayPalSignatureHeaders,
+  PayPalWebhookVerifier,
+} from './paypal-webhook.js';
+import { parsePayPalWebhookEvent } from './paypal-webhook-event.js';
 
 const jerseyDemo = {
   ...demoProduct,
@@ -20,6 +25,7 @@ export function createApp({
   checkDatabase,
   database,
   paypalClient,
+  paypalWebhookVerifier,
   agentModel,
   verifyToken,
   webRoot,
@@ -28,6 +34,7 @@ export function createApp({
   checkDatabase?: () => Promise<void>;
   database?: PrismaClient;
   paypalClient?: PayPalClient;
+  paypalWebhookVerifier?: Pick<PayPalWebhookVerifier, 'verify'>;
   agentModel?: AgentModel;
   verifyToken?: (token: string) => Promise<{ id: string } | null>;
   webRoot?: string;
@@ -46,6 +53,124 @@ export function createApp({
       },
     }),
   );
+
+  app.post(
+    '/api/paypal/webhook',
+    express.raw({ type: 'application/json', limit: '256kb' }),
+    async (req, res) => {
+      if (!config.paypalWebhookId || !paypalWebhookVerifier || !database) {
+        return res.status(503).json({ error: 'PayPal webhook is unavailable' });
+      }
+      if (!Buffer.isBuffer(req.body)) {
+        return res
+          .status(400)
+          .json({ error: 'Invalid PayPal webhook request' });
+      }
+      const headers: PayPalSignatureHeaders = {
+        transmissionId: req.header('paypal-transmission-id') ?? '',
+        transmissionTime: req.header('paypal-transmission-time') ?? '',
+        certUrl: req.header('paypal-cert-url') ?? '',
+        authAlgo: req.header('paypal-auth-algo') ?? '',
+        transmissionSig: req.header('paypal-transmission-sig') ?? '',
+      };
+      if (Object.values(headers).some((value) => !value)) {
+        return res
+          .status(400)
+          .json({ error: 'Invalid PayPal webhook request' });
+      }
+      try {
+        if (
+          !(await paypalWebhookVerifier.verify(
+            req.body,
+            headers,
+            config.paypalWebhookId,
+          ))
+        ) {
+          return res
+            .status(400)
+            .json({ error: 'Invalid PayPal webhook signature' });
+        }
+      } catch {
+        return res
+          .status(503)
+          .json({ error: 'PayPal webhook verification unavailable' });
+      }
+
+      let event: ReturnType<typeof parsePayPalWebhookEvent>;
+      try {
+        event = parsePayPalWebhookEvent(req.body);
+      } catch {
+        return res.status(400).json({ error: 'Invalid PayPal webhook event' });
+      }
+      try {
+        const receipt = {
+          paypalEventId: event.paypalEventId,
+          eventType: event.eventType,
+          resourceType: event.resourceType,
+          resourceId: event.resourceId,
+          ...(event.paypalOrderId
+            ? { paypalOrderId: event.paypalOrderId }
+            : {}),
+          occurredAt: event.occurredAt,
+          payload: event.payload,
+        };
+        await database.$transaction(async (tx) => {
+          let orderId: string | undefined;
+          if (event.paypalOrderId) {
+            orderId = (
+              await tx.order.findUnique({
+                where: { paypalOrderId: event.paypalOrderId },
+                select: { id: true },
+              })
+            )?.id;
+          }
+          if (!orderId && event.relatedCaptureId) {
+            orderId = (
+              await tx.capture.findUnique({
+                where: { paypalCaptureId: event.relatedCaptureId },
+                select: { orderId: true },
+              })
+            )?.orderId;
+          }
+          await tx.payPalWebhookEvent.upsert({
+            where: { paypalEventId: event.paypalEventId },
+            create: {
+              ...receipt,
+              orderId: orderId ?? null,
+              verifiedAt: new Date(),
+            },
+            update: orderId ? { orderId } : {},
+          });
+          if (orderId) {
+            await tx.evidenceEvent.createMany({
+              data: [
+                {
+                  orderId,
+                  source: 'PAYPAL',
+                  kind: 'PAYPAL_WEBHOOK',
+                  externalEventId: event.paypalEventId,
+                  occurredAt: event.occurredAt,
+                  payload: {
+                    eventType: event.eventType,
+                    resourceType: event.resourceType,
+                    resourceId: event.resourceId,
+                    ...event.payload,
+                  },
+                },
+              ],
+              skipDuplicates: true,
+            });
+          }
+        });
+      } catch {
+        return res
+          .status(503)
+          .json({ error: 'Could not store PayPal webhook' });
+      }
+      return res.status(200).json({ received: true });
+    },
+  );
+
   app.use(express.json());
 
   app.get('/api/health', (_req, res) => {

@@ -4,6 +4,7 @@ import { createDatabase } from './database.js';
 import { environment } from './environment.js';
 import { PayPalClient } from './paypal.js';
 import { GroqAgentModel } from './jersey-agent.js';
+import { PayPalWebhookVerifier } from './paypal-webhook.js';
 
 const database = environment.databaseUrl
   ? createDatabase(environment.databaseUrl)
@@ -21,6 +22,7 @@ const app = createApp({
   config: environment,
   database,
   paypalClient,
+  paypalWebhookVerifier: new PayPalWebhookVerifier(),
   agentModel: environment.groqApiKey
     ? new GroqAgentModel(
         environment.groqApiKey,

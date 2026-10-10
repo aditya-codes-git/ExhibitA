@@ -1,6 +1,6 @@
 # PayPal Sandbox Webhook Intake Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (if selected) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (if selected) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Receive cryptographically verified PayPal Sandbox events, persist one minimized receipt per event, and add matched events to the local order evidence timeline.
 
@@ -39,11 +39,11 @@
 
 **Interfaces:** `PayPalWebhookVerifier.verify(rawBody: Buffer, headers: PayPalSignatureHeaders, webhookId: string): Promise<boolean>`. `PayPalSignatureHeaders` contains `transmissionId`, `transmissionTime`, `certUrl`, `authAlgo`, and `transmissionSig`. Verify `transmissionId|transmissionTime|webhookId|crc32` (decimal CRC32 of the original bytes) using RSA-SHA256. Permit only HTTPS `api.sandbox.paypal.com` or `api-m.sandbox.paypal.com` certificate paths under `/v1/notifications/certs/`; return `false` for an invalid signature and throw a sanitized error when certificate retrieval is unavailable.
 
-- [ ] **Step 1: Add failing signature tests** for a valid RSA-SHA256 signature over PayPal's transmission message, a body altered after signing, unsupported algorithm, a disallowed certificate host/path, a redirect, fetch failure, and repeated verification reusing the cached certificate.
-- [ ] **Step 2: Run** `npm test -- apps/api/test/paypal-webhook.test.ts`; confirm the verifier imports fail because the module is absent.
-- [ ] **Step 3: Implement `PayPalWebhookVerifier`** using Node `crypto`, raw-body CRC32, HTTPS Sandbox certificate host/path allowlisting, `redirect: 'error'`, a bounded timeout, and an in-memory certificate cache with bounded lifetime. Do not add a dependency for CRC32.
-- [ ] **Step 4: Run** `npm test -- apps/api/test/paypal-webhook.test.ts`; expect all cryptographic and URL-safety tests to pass.
-- [ ] **Step 5: Commit** the verifier and its tests as `feat: verify PayPal webhook signatures`.
+- [x] **Step 1: Add failing signature tests** for a valid RSA-SHA256 signature over PayPal's transmission message, a body altered after signing, unsupported algorithm, a disallowed certificate host/path, a redirect, fetch failure, and repeated verification reusing the cached certificate.
+- [x] **Step 2: Run** `npm test -- apps/api/test/paypal-webhook.test.ts`; confirm the verifier imports fail because the module is absent.
+- [x] **Step 3: Implement `PayPalWebhookVerifier`** using Node `crypto`, raw-body CRC32, HTTPS Sandbox certificate host/path allowlisting, `redirect: 'error'`, a bounded timeout, and an in-memory certificate cache with bounded lifetime. Do not add a dependency for CRC32.
+- [x] **Step 4: Run** `npm test -- apps/api/test/paypal-webhook.test.ts`; expect all cryptographic and URL-safety tests to pass.
+- [x] **Step 5: Commit** the verifier and its tests as `feat: verify PayPal webhook signatures`.
 
 ### Task 2: Durable receipt schema
 
@@ -55,10 +55,10 @@
 
 **Interfaces:** `PayPalWebhookEvent` has `paypalEventId String @unique @db.VarChar(120)`, `eventType String @db.VarChar(120)`, `resourceType String @db.VarChar(80)`, `resourceId String @db.VarChar(120)`, nullable `paypalOrderId String? @db.VarChar(64)`, `occurredAt`, `verifiedAt`, `recordedAt`, nullable `orderId String? @db.Uuid` with an optional `Order` relation, and minimized `payload Json @db.JsonB`. `EvidenceEvent` accepts source `PAYPAL` and kind `PAYPAL_WEBHOOK`; matched timeline events use the PayPal event ID as `externalEventId`.
 
-- [ ] **Step 1: Add schema declarations and the additive SQL migration** for the receipt model and `Order` relation, extend the evidence source/kind constraints, and reuse the existing timeline uniqueness index. Enable RLS and revoke direct `PUBLIC`, `anon`, and `authenticated` grants on the receipt table.
-- [ ] **Step 2: Run** `npm run db:validate` and `npm run db:generate`; expect Prisma schema validation and client generation to pass.
-- [ ] **Step 3: Review migration SQL** for additive-only behavior, `ON DELETE SET NULL` on an optional order link, global event-ID uniqueness, and private-table grants/RLS.
-- [ ] **Step 4: Commit** schema and migration as `feat: persist PayPal webhook receipts`.
+- [x] **Step 1: Add schema declarations and the additive SQL migration** for the receipt model and `Order` relation, extend the evidence source/kind constraints, and reuse the existing timeline uniqueness index. Enable RLS and revoke direct `PUBLIC`, `anon`, and `authenticated` grants on the receipt table.
+- [x] **Step 2: Run** `npm run db:validate` and `npm run db:generate`; expect Prisma schema validation and client generation to pass.
+- [x] **Step 3: Review migration SQL** for additive-only behavior, `ON DELETE SET NULL` on an optional order link, global event-ID uniqueness, and private-table grants/RLS.
+- [x] **Step 4: Commit** schema and migration as `feat: persist PayPal webhook receipts`.
 
 ### Task 3: Public verified webhook route
 
@@ -72,14 +72,14 @@
 
 **Interfaces:** `parsePayPalWebhookEvent(rawBody: Buffer)` validates and returns normalized fields: `paypalEventId`, `eventType`, `resourceType`, `resourceId`, optional `paypalOrderId`, `occurredAt`, and minimized JSON payload. `createApp` accepts an injected verifier with the Task 1 interface for isolated route tests.
 
-- [ ] **Step 1: Add failing route tests** for no bearer token required, missing ID returns 503, missing/malformed headers or invalid signature return 400 without DB writes, database failures return 503, and valid events return minimal acknowledgements.
-- [ ] **Step 2: Add failing persistence tests** for matched receipt plus timeline event in one transaction, unmatched receipt retention, replay deduplication, and later matched delivery linking the existing receipt without duplicate evidence. Assert stored JSON excludes buyer/seller emails and full resource payloads.
-- [ ] **Step 3: Implement envelope normalization** for `CHECKOUT.ORDER.*` events and resource `supplementary_data.related_ids.order_id`; if no order ID exists but `related_ids.capture_id` is present, resolve it through `Capture.paypalCaptureId`, or use `resource.id` when the resource itself is a capture.
-- [ ] **Step 4: Implement `POST /api/paypal/webhook`** using `express.raw({ type: 'application/json', limit: '256kb' })` before `express.json()`. Verify raw bytes before parsing, fail closed when ID/verifier/database is missing, and transactionally upsert the receipt plus matched timeline event.
-- [ ] **Step 5: Configure the server-only webhook ID** in the parsed runtime config and Render Blueprint; keep it optional so existing deployments start with the endpoint safely disabled until a Sandbox webhook is registered.
-- [ ] **Step 6: Update PayPal setup docs** with `https://exhibita.onrender.com/api/paypal/webhook`, the Sandbox-only warning, and the exact recommended events: `CHECKOUT.ORDER.APPROVED`, `PAYMENT.CAPTURE.COMPLETED`, `PAYMENT.CAPTURE.PENDING`, `PAYMENT.CAPTURE.DENIED`, and `PAYMENT.CAPTURE.REFUNDED`.
-- [ ] **Step 7: Run** `npm test -- apps/api/test/paypal-webhook.test.ts`; expect signature, route, privacy, duplicate, and unmatched-order cases to pass.
-- [ ] **Step 8: Commit** route and setup changes as `feat: receive verified PayPal webhook events`.
+- [x] **Step 1: Add failing route tests** for no bearer token required, missing ID returns 503, missing/malformed headers or invalid signature return 400 without DB writes, database failures return 503, and valid events return minimal acknowledgements.
+- [x] **Step 2: Add failing persistence tests** for matched receipt plus timeline event in one transaction, unmatched receipt retention, replay deduplication, and later matched delivery linking the existing receipt without duplicate evidence. Assert stored JSON excludes buyer/seller emails and full resource payloads.
+- [x] **Step 3: Implement envelope normalization** for `CHECKOUT.ORDER.*` events and resource `supplementary_data.related_ids.order_id`; if no order ID exists but `related_ids.capture_id` is present, resolve it through `Capture.paypalCaptureId`, or use `resource.id` when the resource itself is a capture.
+- [x] **Step 4: Implement `POST /api/paypal/webhook`** using `express.raw({ type: 'application/json', limit: '256kb' })` before `express.json()`. Verify raw bytes before parsing, fail closed when ID/verifier/database is missing, and transactionally upsert the receipt plus matched timeline event.
+- [x] **Step 5: Configure the server-only webhook ID** in the parsed runtime config and Render Blueprint; keep it optional so existing deployments start with the endpoint safely disabled until a Sandbox webhook is registered.
+- [x] **Step 6: Update PayPal setup docs** with `https://exhibita.onrender.com/api/paypal/webhook`, the Sandbox-only warning, and the exact recommended events: `CHECKOUT.ORDER.APPROVED`, `PAYMENT.CAPTURE.COMPLETED`, `PAYMENT.CAPTURE.PENDING`, `PAYMENT.CAPTURE.DENIED`, and `PAYMENT.CAPTURE.REFUNDED`.
+- [x] **Step 7: Run** `npm test -- apps/api/test/paypal-webhook.test.ts`; expect signature, route, privacy, duplicate, and unmatched-order cases to pass.
+- [x] **Step 8: Commit** route and setup changes as `feat: receive verified PayPal webhook events`.
 
 ### Task 4: Release and Sandbox handoff
 
