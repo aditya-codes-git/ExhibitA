@@ -34,7 +34,18 @@ export function createApp({
 }) {
   const app = express();
   app.disable('x-powered-by');
-  app.use(helmet());
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          connectSrc: [
+            "'self'",
+            ...(config.supabaseUrl ? [new URL(config.supabaseUrl).origin] : []),
+          ],
+        },
+      },
+    }),
+  );
   app.use(express.json());
 
   app.get('/api/health', (_req, res) => {

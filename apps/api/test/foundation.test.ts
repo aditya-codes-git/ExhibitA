@@ -37,6 +37,20 @@ describe('configuration', () => {
 });
 
 describe('health', () => {
+  it('allows the browser to connect to the configured Supabase Auth host', async () => {
+    const app = createApp({
+      config: {
+        port: 3001,
+        supabaseUrl: 'https://project.supabase.co',
+        supabaseAnonKey: 'public-key',
+      },
+    });
+    const response = await request(app).get('/api/health');
+    expect(response.headers['content-security-policy']).toContain(
+      "connect-src 'self' https://project.supabase.co",
+    );
+  });
+
   it('keeps liveness separate from unconfigured integrations', async () => {
     const app = createApp({ config: { port: 3001 } });
     expect((await request(app).get('/api/health')).status).toBe(200);
