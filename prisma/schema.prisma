@@ -34,6 +34,7 @@ model Order {
   captures         Capture[]
   evidenceCase     EvidenceCase?
   evidenceEvents   EvidenceEvent[]
+  paypalWebhookEvents PayPalWebhookEvent[]
 
   @@index([merchantId, createdAt])
   @@schema("exhibita")
@@ -80,6 +81,24 @@ model EvidenceEvent {
   payload         Json     @db.JsonB
 
   @@unique([orderId, source, externalEventId])
+  @@index([orderId, occurredAt, recordedAt])
+  @@schema("exhibita")
+}
+
+model PayPalWebhookEvent {
+  id            String   @id @default(uuid()) @db.Uuid
+  paypalEventId String   @unique @db.VarChar(120)
+  eventType     String   @db.VarChar(120)
+  resourceType  String   @db.VarChar(80)
+  resourceId    String   @db.VarChar(120)
+  paypalOrderId String?  @db.VarChar(64)
+  orderId       String?  @db.Uuid
+  order         Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  occurredAt    DateTime @db.Timestamptz(3)
+  verifiedAt    DateTime @db.Timestamptz(3)
+  recordedAt    DateTime @default(now()) @db.Timestamptz(3)
+  payload       Json     @db.JsonB
+
   @@index([orderId, occurredAt, recordedAt])
   @@schema("exhibita")
 }
